@@ -52,9 +52,22 @@ export default async function handler(req, res) {
       const eventKey = `webhook_event:${event.user_id}:${Date.now()}`;
       await kv.set(eventKey, eventRecord);
 
-      // Queue event for processing (we'll implement this later)
-      // For now, just log it
-      console.log('Event queued for processing:', eventRecord);
+      // Trigger processing asynchronously
+      try {
+        fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/process-webhook-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ eventKey })
+        }).catch(error => {
+          console.error('❌ Failed to trigger event processing:', error);
+          // We'll retry through the cleanup job
+        });
+      } catch (error) {
+        console.error('❌ Error triggering event processing:', error);
+        // We'll retry through the cleanup job
+      }
 
       // Respond quickly (under 10 seconds)
       return res.status(200).json({ success: true });
