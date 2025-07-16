@@ -8,7 +8,9 @@
     "build": "echo 'No build step needed for Vercel functions'",
     "deploy": "vercel --prod"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  },
   "devDependencies": {
     "@vercel/node": "^3.0.0"
   },

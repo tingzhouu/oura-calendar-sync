@@ -1,5 +1,7 @@
 // Vercel Serverless Function: /api/exchange-oura-token.js
-// Handles secure Oura OAuth token exchange
+// Handles secure Oura OAuth token exchange with Vercel KV storage
+
+import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
   console.log('🔄 Oura token exchange request received');
@@ -75,24 +77,30 @@ export default async function handler(req, res) {
       });
     }
 
-    // Here you would typically store tokens in your database
-    // For now, we'll just return success and let frontend handle storage
-    console.log(`✅ Oura tokens received successfully for user: ${userId}`);
+    // Store tokens securely in Vercel KV
+    const tokenRecord = {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || '',
+      token_type: tokens.token_type || 'Bearer',
+      expires_in: tokens.expires_in || 3600,
+      scope: tokens.scope || '',
+      created_at: new Date().toISOString(),
+      last_used: new Date().toISOString()
+    };
 
-    // Return success (without exposing actual tokens to logs)
+    // Store in KV with user-specific key
+    await kv.set(`oura_tokens:${userId}`, tokenRecord);
+    
+    // Also mark user as connected
+    await kv.set(`oura_connected:${userId}`, true);
+    
+    console.log(`✅ Oura tokens stored in KV for user: ${userId}`);
+
+    // Return success (no tokens in response for security)
     return res.status(200).json({
       success: true,
       message: 'Oura account connected successfully',
-      connected_at: new Date().toISOString(),
-      // Include the tokens so frontend can store them
-      // In production, you'd store these server-side instead
-      tokens: {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || '',
-        token_type: tokens.token_type || 'Bearer',
-        expires_in: tokens.expires_in || 3600,
-        scope: tokens.scope || ''
-      }
+      connected_at: new Date().toISOString()
     });
 
   } catch (error) {

@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Web App</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Firebase SDK -->
-    <script defer src="/__/firebase/11.10.0/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/11.10.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/11.10.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/init.js"></script>
+    <title>Oura Calendar Sync - Firebase-Free</title>
     
     <style>
         * {
@@ -21,904 +13,415 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
-            color: #333;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            color: white;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 2rem;
         }
 
-        header {
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #fff, #e0e7ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .auth-section {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            padding: 1rem 0;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            margin: 2rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .header-content {
-            display: flex;
-            justify-content: space-between;
+        .btn {
+            display: inline-flex;
             align-items: center;
-        }
-
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: white;
-            text-decoration: none;
-        }
-
-        nav ul {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            transition: opacity 0.3s;
-        }
-
-        nav a:hover {
-            opacity: 0.8;
-        }
-
-        .auth-buttons {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .auth-button {
-            padding: 8px 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: all 0.3s;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            margin: 0.5rem;
         }
 
-        .auth-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+        .btn-google {
+            background: #4285f4;
+            color: white;
         }
 
-        .auth-button.primary {
+        .btn-google:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .btn-oura {
+            background: #ff6b35;
+            color: white;
+        }
+
+        .btn-oura:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
             background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .hidden {
+            display: none;
         }
 
         .user-info {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 1rem;
-            color: white;
+            margin-bottom: 1rem;
         }
 
         .user-avatar {
-            width: 32px;
-            height: 32px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
+            font-weight: bold;
+            overflow: hidden;
         }
 
-        main {
-            margin-top: 80px;
-            padding: 4rem 0;
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-        .hero {
-            text-align: center;
-            color: white;
-            margin-bottom: 4rem;
-        }
-
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            opacity: 0;
-            animation: fadeInUp 0.8s ease forwards;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-            opacity: 0;
-            animation: fadeInUp 0.8s ease 0.2s forwards;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            opacity: 0;
-            animation: fadeInUp 0.8s ease 0.4s forwards;
-        }
-
-        .cta-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        /* Calendar Status Section */
-        .calendar-status-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin: 2rem 0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            text-align: center;
-        }
-
-        .calendar-status-section.hidden {
-            display: none;
-        }
-
-        .status-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .status-message {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-            padding: 1rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-            border-left: 4px solid #4caf50;
-        }
-
-        .error-message {
-            background: rgba(244, 67, 54, 0.2);
-            color: #f44336;
-            padding: 1rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-            border-left: 4px solid #f44336;
-        }
-
-        /* Oura Integration Styles */
-        .oura-connection {
+        .connection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
             margin: 2rem 0;
         }
 
         .connection-card {
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 1rem 0;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .connection-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .connection-icon {
-            font-size: 2rem;
-            color: #ff6b35;
-        }
-
-        .connection-icon.connected {
-            color: #4caf50;
-        }
-
-        .connection-card h3 {
-            margin: 0;
-            font-size: 1.3rem;
-        }
-
-        .connect-button, .sync-button, .disconnect-button {
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 0.5rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .sync-button {
-            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-        }
-
-        .disconnect-button {
-            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
-        }
-
-        .connect-button:hover, .sync-button:hover, .disconnect-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .connection-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .integration-info {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            text-align: left;
-        }
-
-        .integration-info h4 {
-            margin-bottom: 1rem;
-            color: #fff;
-        }
-
-        .integration-info ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .integration-info li {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .integration-info li:last-child {
-            border-bottom: none;
-        }
-
-        /* Authentication Modal Styles */
-        .auth-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .auth-modal.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .auth-modal-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 3rem;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 350px;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            transform: translateY(50px);
-            transition: transform 0.3s ease;
-        }
-
-        .auth-modal.active .auth-modal-content {
-            transform: translateY(0);
-        }
-
-        .auth-modal h2 {
-            color: #333;
-            margin-bottom: 2rem;
-            font-weight: 600;
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .auth-error {
-            color: #e74c3c;
-            margin-top: 1rem;
-            font-size: 14px;
-        }
-
-        .google-signin {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 16px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            width: 100%;
-            font-size: 16px;
-        }
-
-        .google-signin:hover {
-            background: #3367d6;
-            transform: translateY(-2px);
-        }
-
-        .google-signin:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .auth-description {
-            color: #666;
-            margin-bottom: 2rem;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .permission-note {
-            background: rgba(66, 133, 244, 0.1);
-            color: #4285f4;
-            padding: 1rem;
-            border-radius: 10px;
-            margin-top: 1rem;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 4rem;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             padding: 2rem;
             border-radius: 20px;
             text-align: center;
-            color: white;
-            transition: transform 0.3s;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s;
         }
 
-        .feature-card:hover {
+        .connection-card:hover {
             transform: translateY(-5px);
         }
 
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
+        .connection-status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
             font-weight: 600;
+            margin-bottom: 1rem;
         }
 
-        .feature-card p {
-            opacity: 0.9;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            margin: 4rem 0;
-        }
-
-        .stat-item {
-            text-align: center;
+        .status-connected {
+            background: #10b981;
             color: white;
         }
 
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 0.5rem;
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
         }
 
-        .stat-label {
-            font-size: 1.1rem;
+        .feature-list {
+            text-align: left;
+            margin: 1rem 0;
+        }
+
+        .feature-list li {
+            padding: 0.25rem 0;
             opacity: 0.9;
         }
 
-        footer {
-            background: rgba(0, 0, 0, 0.2);
-            color: white;
-            text-align: center;
-            padding: 2rem 0;
-            margin-top: 4rem;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
         }
 
         @media (max-width: 768px) {
             .hero h1 {
-                font-size: 2.5rem;
+                font-size: 2rem;
             }
             
-            nav ul {
-                display: none;
-            }
-            
-            .features {
+            .connection-grid {
                 grid-template-columns: 1fr;
             }
-
-            .auth-modal-content {
-                padding: 2rem;
-                margin: 1rem;
-            }
-        }
-
-        .floating-shapes {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .shape {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        .shape:nth-child(1) {
-            width: 80px;
-            height: 80px;
-            left: 10%;
-            animation-delay: 0s;
-        }
-
-        .shape:nth-child(2) {
-            width: 120px;
-            height: 120px;
-            right: 10%;
-            animation-delay: 2s;
-        }
-
-        .shape:nth-child(3) {
-            width: 60px;
-            height: 60px;
-            left: 50%;
-            animation-delay: 4s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .hidden {
-            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="floating-shapes">
-        <div class="shape"></div>
-        <div class="shape"></div>
-        <div class="shape"></div>
-    </div>
+    <div class="container">
+        <div class="hero">
+            <h1>🏃‍♂️ Oura Calendar Sync</h1>
+            <p>Sync your health data with Google Calendar - Firebase Free!</p>
+        </div>
 
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <a href="#" class="logo">MyApp</a>
-                <nav>
+        <!-- Authentication Section -->
+        <div class="auth-section">
+            <div id="signed-out" class="auth-state">
+                <h2>Connect Your Accounts</h2>
+                <p>Start by signing in with Google to access your calendar</p>
+                <button class="btn btn-google" onclick="signInWithGoogle()">
+                    🔐 Sign in with Google
+                </button>
+            </div>
+
+            <div id="signed-in" class="auth-state hidden">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar"></div>
+                    <div>
+                        <div id="user-name"></div>
+                        <div id="user-email" style="opacity: 0.8; font-size: 0.9rem;"></div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+            </div>
+        </div>
+
+        <!-- Connection Grid -->
+        <div class="connection-grid">
+            <!-- Google Calendar Card -->
+            <div class="connection-card">
+                <h3>📅 Google Calendar</h3>
+                <div class="connection-status" id="google-status">
+                    <span class="status-disconnected">Not Connected</span>
+                </div>
+                <div class="feature-list">
                     <ul>
-                        <li><a href="#home">Home</a></li>
-                        <li><a href="#features">Features</a></li>
-                        <li><a href="#about">About</a></li>
-                        <li><a href="#contact">Contact</a></li>
+                        <li>✓ Calendar event creation</li>
+                        <li>✓ Smart scheduling</li>
+                        <li>✓ Health-based reminders</li>
+                        <li>✓ Automatic sync</li>
                     </ul>
-                </nav>
-                
-                <!-- Authentication Section -->
-                <div id="auth-section">
-                    <!-- Not logged in -->
-                    <div id="auth-buttons" class="auth-buttons">
-                        <button class="auth-button primary" onclick="openAuthModal()">Sign In with Google</button>
-                    </div>
-                    
-                    <!-- Logged in -->
-                    <div id="user-info" class="user-info hidden">
-                        <div id="user-avatar" class="user-avatar"></div>
-                        <span id="user-name"></span>
-                        <button class="auth-button" onclick="signOut()">Sign Out</button>
-                    </div>
+                </div>
+                <p style="margin: 1rem 0; opacity: 0.8;">
+                    Connect with Google to sync health data to your calendar
+                </p>
+            </div>
+
+            <!-- Oura Ring Card -->
+            <div class="connection-card">
+                <h3>💍 Oura Ring</h3>
+                <div class="connection-status" id="oura-status">
+                    <span class="status-disconnected">Not Connected</span>
+                </div>
+                <div class="feature-list">
+                    <ul>
+                        <li>📊 Sleep tracking data</li>
+                        <li>💓 Heart rate monitoring</li>
+                        <li>🏃‍♂️ Workout analysis</li>
+                        <li>🔋 Recovery insights</li>
+                    </ul>
+                </div>
+                <div id="oura-actions">
+                    <button class="btn btn-oura" onclick="connectOura()" id="connect-oura-btn">
+                        Connect Oura Ring
+                    </button>
                 </div>
             </div>
         </div>
-    </header>
-
-    <!-- Authentication Modal -->
-    <div id="auth-modal" class="auth-modal">
-        <div class="auth-modal-content">
-            <button class="close-modal" onclick="closeAuthModal()">&times;</button>
-            <h2>Welcome!</h2>
-            <p class="auth-description">Sign in with your Google account to enable Google Calendar integration for backend services.</p>
-            
-            <button id="google-signin-btn" class="google-signin" onclick="signInWithGoogle()">
-                <i class="fab fa-google"></i>
-                Continue with Google
-            </button>
-            
-            <div class="permission-note">
-                <i class="fas fa-info-circle"></i>
-                This app will request permission to manage your Google Calendar events from the backend.
-            </div>
-            
-            <div id="auth-error" class="auth-error"></div>
-        </div>
     </div>
-
-    <main>
-        <div class="container">
-            <section class="hero" id="home">
-                <h1>Welcome to the Future</h1>
-                <p>Build amazing experiences with our modern web application platform</p>
-                <a href="#features" class="cta-button">Get Started</a>
-            </section>
-
-            <!-- Calendar Status Section -->
-            <section id="calendar-status-section" class="calendar-status-section hidden">
-                <i class="fas fa-calendar-check status-icon"></i>
-                <h2>Health & Calendar Integration</h2>
-                
-                <!-- Google Calendar Status -->
-                <div id="google-status" class="status-message">
-                    ✅ Google Calendar connected! Your backend can create calendar events.
-                </div>
-                
-                <!-- Oura Connection -->
-                <div id="oura-connection" class="oura-connection">
-                    <div id="oura-disconnected" class="connection-card">
-                        <div class="connection-header">
-                            <i class="fas fa-ring connection-icon"></i>
-                            <h3>Connect Oura Ring</h3>
-                        </div>
-                        <p>Connect your Oura account to sync health data with your calendar</p>
-                        <button class="connect-button" onclick="connectOura()">
-                            <i class="fas fa-link"></i> Connect Oura Account
-                        </button>
-                    </div>
-                    
-                    <div id="oura-connected" class="connection-card hidden">
-                        <div class="connection-header">
-                            <i class="fas fa-ring connection-icon connected"></i>
-                            <h3>Oura Ring Connected</h3>
-                        </div>
-                        <p>Your Oura health data is ready for calendar integration</p>
-                        <div class="connection-actions">
-                            <button class="sync-button" onclick="syncOuraData()">
-                                <i class="fas fa-sync"></i> Sync Now
-                            </button>
-                            <button class="disconnect-button" onclick="disconnectOura()">
-                                <i class="fas fa-unlink"></i> Disconnect
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="integration-info">
-                    <h4>🔄 Integration Features:</h4>
-                    <ul>
-                        <li>📅 <strong>Sleep Schedule:</strong> Automatically block calendar time for optimal sleep</li>
-                        <li>🏃 <strong>Workout Planning:</strong> Schedule exercise based on readiness scores</li>
-                        <li>😴 <strong>Recovery Time:</strong> Block recovery periods after intense activities</li>
-                        <li>📊 <strong>Health Reports:</strong> Weekly calendar summaries of health metrics</li>
-                    </ul>
-                </div>
-                
-                <div style="margin-top: 2rem;">
-                    <a href="https://calendar.google.com" target="_blank" class="auth-button">
-                        <i class="fas fa-external-link-alt"></i> View Google Calendar
-                    </a>
-                    <a href="https://cloud.ouraring.com" target="_blank" class="auth-button">
-                        <i class="fas fa-ring"></i> View Oura Cloud
-                    </a>
-                </div>
-            </section>
-
-            <section class="stats">
-                <div class="stat-item">
-                    <span class="stat-number" data-target="10000">0</span>
-                    <span class="stat-label">Happy Users</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="99">0</span>
-                    <span class="stat-label">% Uptime</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="500">0</span>
-                    <span class="stat-label">Projects</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="24">0</span>
-                    <span class="stat-label">Support</span>
-                </div>
-            </section>
-
-            <section class="features" id="features">
-                <div class="feature-card">
-                    <i class="fas fa-rocket feature-icon"></i>
-                    <h3>Fast Performance</h3>
-                    <p>Lightning-fast loading times and optimized performance for the best user experience.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-calendar-alt feature-icon"></i>
-                    <h3>Calendar Integration</h3>
-                    <p>Seamlessly integrate with Google Calendar through backend services to manage events automatically.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-mobile-alt feature-icon"></i>
-                    <h3>Mobile First</h3>
-                    <p>Responsive design that works perfectly on all devices and screen sizes.</p>
-                </div>
-            </section>
-        </div>
-    </main>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 MyApp. Powered by Firebase Hosting. Made with ❤️</p>
-        </div>
-    </footer>
 
     <script>
-        // Global variables
+        // Configuration
+        const GOOGLE_CLIENT_ID = '1001278392320-sd2f6h7dl5pm98vvesdi40o1rcvm0spe.apps.googleusercontent.com'; // Working Client ID from OAuth Playground
+        const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM';
+        const API_BASE_URL = 'https://oura-calendar-sync.vercel.app/api';
+        
+        // Google OAuth scopes for Calendar access
+        const GOOGLE_SCOPES = 'openid email profile https://www.googleapis.com/auth/calendar';
+        const OURA_SCOPES = 'email personal daily heartrate workout session spo2';
+        
+        // Global state
         let currentUser = null;
         let ouraConnected = false;
-        
-        // Oura OAuth configuration
-        const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM'; // Get this from your Oura developer app
-        const OURA_REDIRECT_URI = encodeURIComponent(window.location.origin + '/oura-callback');
-        const OURA_SCOPES = 'email personal daily heartrate workout session spo2';
 
-        // Initialize Firebase Auth when the page loads
+        // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
-            firebase.auth().onAuthStateChanged(async function(user) {
-                currentUser = user;
-                updateAuthUI(user);
-                
-                if (user) {
-                    console.log('✅ User signed in:', user.email);
-                    console.log('👤 User info:', {
-                        name: user.displayName,
-                        email: user.email,
-                        photo: user.photoURL
-                    });
-                    
-                    // Show calendar status
-                    showCalendarStatus();
-                    
-                    // Store user tokens for backend use
-                    await storeUserTokens(user);
-                    
-                    // Check Oura connection status
-                    await checkOuraConnection(user);
-                } else {
-                    console.log('❌ User signed out');
-                    hideCalendarStatus();
-                    ouraConnected = false;
-                    updateOuraUI();
-                }
-            });
-
-            // Handle Oura OAuth callback if present
-            handleOuraCallback();
+            // Check if user is returning from OAuth callback
+            handleOAuthCallbacks();
+            
+            // Load user session if exists
+            loadUserSession();
         });
 
-        // Update UI based on authentication state
-        function updateAuthUI(user) {
-            const authButtons = document.getElementById('auth-buttons');
-            const userInfo = document.getElementById('user-info');
-            const userName = document.getElementById('user-name');
-            const userAvatar = document.getElementById('user-avatar');
+        function handleOAuthCallbacks() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
 
-            if (user) {
-                // User is signed in
-                authButtons.classList.add('hidden');
-                userInfo.classList.remove('hidden');
-                
-                userName.textContent = user.displayName || user.email;
-                userAvatar.textContent = (user.displayName || user.email).charAt(0).toUpperCase();
-                
-                if (user.photoURL) {
-                    userAvatar.innerHTML = `<img src="${user.photoURL}" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            if (error) {
+                console.error('❌ OAuth error:', error);
+                alert('Authentication failed. Please try again.');
+                cleanUpUrl();
+                return;
+            }
+
+            if (code && state) {
+                const storedState = localStorage.getItem('oauth_state');
+                const oauthType = localStorage.getItem('oauth_type');
+
+                if (state !== storedState) {
+                    console.error('❌ State mismatch in OAuth');
+                    alert('Security error. Please try again.');
+                    cleanUpUrl();
+                    return;
                 }
-            } else {
-                // User is signed out
-                authButtons.classList.remove('hidden');
-                userInfo.classList.add('hidden');
+
+                if (oauthType === 'google') {
+                    handleGoogleCallback(code);
+                } else if (oauthType === 'oura') {
+                    handleOuraCallback(code);
+                }
             }
         }
 
-        // Show/hide calendar status
-        function showCalendarStatus() {
-            document.getElementById('calendar-status-section').classList.remove('hidden');
-        }
-
-        function hideCalendarStatus() {
-            document.getElementById('calendar-status-section').classList.add('hidden');
-        }
-
-        // Open authentication modal
-        function openAuthModal() {
-            const modal = document.getElementById('auth-modal');
-            modal.classList.add('active');
-            clearAuthError();
-        }
-
-        // Close authentication modal
-        function closeAuthModal() {
-            const modal = document.getElementById('auth-modal');
-            modal.classList.remove('active');
-            clearAuthError();
-        }
-
-        // Sign in with Google (with Calendar permissions)
-        async function signInWithGoogle() {
-            const button = document.getElementById('google-signin-btn');
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
-            
+        async function handleGoogleCallback(code) {
             try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                // Add Calendar scopes for read/write access
-                provider.addScope('https://www.googleapis.com/auth/calendar');
-                provider.addScope('https://www.googleapis.com/auth/calendar.events');
+                console.log('🔄 Processing Google OAuth callback...');
                 
-                const result = await firebase.auth().signInWithPopup(provider);
-                console.log('✅ Google sign-in successful:', result.user.email);
-                
-                // Store the access token for backend use
-                if (result.credential?.accessToken) {
-                    console.log('📅 Calendar access token obtained for backend use');
+                const response = await fetch(`${API_BASE_URL}/google-auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        redirectUri: window.location.origin
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Google authentication failed');
                 }
+
+                // Store user session
+                currentUser = result.user;
+                localStorage.setItem('user_session', JSON.stringify(currentUser));
                 
-                closeAuthModal();
+                updateAuthUI(true);
+                await checkOuraConnection();
+                
+                console.log('✅ Google authentication successful!');
+                
             } catch (error) {
-                console.error('❌ Google sign-in error:', error);
-                showAuthError(getErrorMessage(error.code));
+                console.error('❌ Error in Google authentication:', error);
+                alert('Failed to complete Google authentication. Please try again.');
             } finally {
-                button.disabled = false;
-                button.innerHTML = '<i class="fab fa-google"></i> Continue with Google';
+                cleanUpOAuthState();
             }
         }
 
-        // Store user tokens for backend use
-        async function storeUserTokens(user) {
-            try {
-                // Get Firebase ID token (for backend authentication)
-                const idToken = await user.getIdToken();
-                
-                // Store user information in Firestore for backend access
-                // This would typically include the refresh token for Calendar API access
-                console.log('💾 Storing user tokens for backend calendar access');
-                
-                // In a real implementation, you'd store this in Firestore:
-                // await firebase.firestore().collection('users').doc(user.uid).set({
-                //     email: user.email,
-                //     displayName: user.displayName,
-                //     photoURL: user.photoURL,
-                //     calendarEnabled: true,
-                //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                // });
-                
-            } catch (error) {
-                console.error('❌ Error storing user tokens:', error);
+        async function handleOuraCallback(code) {
+            if (!currentUser) {
+                alert('Please sign in with Google first');
+                cleanUpOAuthState();
+                return;
             }
-        }
 
-        // Sign out
-        async function signOut() {
             try {
-                await firebase.auth().signOut();
-                console.log('✅ User signed out successfully');
-            } catch (error) {
-                console.error('❌ Sign-out error:', error);
-            }
-        }
-
-        // Oura Integration Functions
-        async function checkOuraConnection(user) {
-            try {
-                // Check if user has Oura tokens stored
-                // In a real implementation, you'd check Firestore for stored Oura tokens
-                const storedConnection = localStorage.getItem(`oura_connected_${user.uid}`);
-                ouraConnected = storedConnection === 'true';
-                updateOuraUI();
+                console.log('🔄 Processing Oura OAuth callback...');
                 
-                if (ouraConnected) {
-                    console.log('✅ Oura account already connected');
-                } else {
-                    console.log('❌ Oura account not connected');
+                const response = await fetch(`${API_BASE_URL}/exchange-oura-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        userId: currentUser.id,
+                        redirectUri: window.location.origin
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Oura token exchange failed');
                 }
-            } catch (error) {
-                console.error('❌ Error checking Oura connection:', error);
-                ouraConnected = false;
+
+                ouraConnected = true;
                 updateOuraUI();
+                
+                console.log('✅ Oura account connected successfully!');
+                
+            } catch (error) {
+                console.error('❌ Error in Oura token exchange:', error);
+                alert('Failed to complete Oura connection. Please try again.');
+            } finally {
+                cleanUpOAuthState();
             }
         }
 
-        function updateOuraUI() {
-            const disconnected = document.getElementById('oura-disconnected');
-            const connected = document.getElementById('oura-connected');
-            
-            if (ouraConnected) {
-                disconnected.classList.add('hidden');
-                connected.classList.remove('hidden');
-            } else {
-                disconnected.classList.remove('hidden');
-                connected.classList.add('hidden');
-            }
+        function signInWithGoogle() {
+            // Generate random state for security
+            const state = generateRandomString(32);
+            localStorage.setItem('oauth_state', state);
+            localStorage.setItem('oauth_type', 'google');
+
+            // Build Google OAuth URL
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${GOOGLE_CLIENT_ID}&` +
+                `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
+                `scope=${encodeURIComponent(GOOGLE_SCOPES)}&` +
+                `response_type=code&` +
+                `access_type=offline&` +
+                `state=${state}`;
+
+            console.log('🔗 Redirecting to Google OAuth...');
+            window.location.href = googleAuthUrl;
         }
 
         function connectOura() {
@@ -929,14 +432,14 @@
 
             // Generate random state for security
             const state = generateRandomString(32);
-            localStorage.setItem('oura_oauth_state', state);
-            localStorage.setItem('oura_oauth_user', currentUser.uid);
+            localStorage.setItem('oauth_state', state);
+            localStorage.setItem('oauth_type', 'oura');
 
             // Build Oura OAuth URL
             const ouraAuthUrl = `https://cloud.ouraring.com/oauth/authorize?` +
                 `response_type=code&` +
                 `client_id=${OURA_CLIENT_ID}&` +
-                `redirect_uri=${OURA_REDIRECT_URI}&` +
+                `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
                 `scope=${encodeURIComponent(OURA_SCOPES)}&` +
                 `state=${state}`;
 
@@ -944,281 +447,119 @@
             window.location.href = ouraAuthUrl;
         }
 
-        async function handleOuraCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
+        function signOut() {
+            currentUser = null;
+            ouraConnected = false;
+            localStorage.removeItem('user_session');
+            updateAuthUI(false);
+            updateOuraUI();
+            console.log('👋 Signed out successfully');
+        }
 
-            if (error) {
-                console.error('❌ Oura OAuth error:', error);
-                alert('Oura connection failed. Please try again.');
-                // Clean up URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-                return;
-            }
-
-            if (code && state) {
-                const storedState = localStorage.getItem('oura_oauth_state');
-                const storedUser = localStorage.getItem('oura_oauth_user');
-
-                if (state !== storedState) {
-                    console.error('❌ State mismatch in Oura OAuth');
-                    alert('Security error. Please try connecting again.');
-                    return;
-                }
-
-                try {
-                    console.log('✅ Oura OAuth code received, exchanging for tokens...');
-                    
-                    // In a real implementation, you'd send this to your backend
-                    // to exchange the code for access tokens securely
-                    await exchangeOuraCode(code, storedUser);
-                    
-                    // Clean up
-                    localStorage.removeItem('oura_oauth_state');
-                    localStorage.removeItem('oura_oauth_user');
-                    
-                    // Clean up URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                } catch (error) {
-                    console.error('❌ Error exchanging Oura code:', error);
-                    alert('Failed to complete Oura connection. Please try again.');
-                }
+        function loadUserSession() {
+            const savedSession = localStorage.getItem('user_session');
+            if (savedSession) {
+                currentUser = JSON.parse(savedSession);
+                updateAuthUI(true);
+                checkOuraConnection();
             }
         }
 
-        async function exchangeOuraCode(code, userId) {
-            try {
-                console.log('🔄 Exchanging Oura code for access token...');
-                
-                // Call backend API to exchange code for tokens
-                const response = await fetch('https://YOUR_VERCEL_APP.vercel.app/api/exchange-oura-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        userId: userId,
-                        redirectUri: decodeURIComponent(OURA_REDIRECT_URI)
-                    })
-                });
+        async function checkOuraConnection() {
+            if (!currentUser) return;
 
+            try {
+                const response = await fetch(`${API_BASE_URL}/get-oura-status?userId=${currentUser.id}`);
                 const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Token exchange failed');
-                }
-
-                if (result.success && result.tokens) {
-                    // Store tokens securely in Firestore
-                    await firebase.firestore().collection('users').doc(userId).set({
-                        oura_tokens: {
-                            access_token: result.tokens.access_token,
-                            refresh_token: result.tokens.refresh_token,
-                            token_type: result.tokens.token_type,
-                            expires_in: result.tokens.expires_in,
-                            scope: result.tokens.scope,
-                            created_at: firebase.firestore.FieldValue.serverTimestamp()
-                        },
-                        oura_connected: true,
-                        last_oura_sync: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-
-                    // Update local state
-                    localStorage.setItem(`oura_connected_${userId}`, 'true');
-                    ouraConnected = true;
+                
+                if (response.ok) {
+                    ouraConnected = result.connected;
                     updateOuraUI();
-                    
-                    console.log('✅ Oura account connected successfully!');
+                }
+            } catch (error) {
+                console.error('❌ Error checking Oura status:', error);
+            }
+        }
+
+        function updateAuthUI(signedIn) {
+            const signedOutEl = document.getElementById('signed-out');
+            const signedInEl = document.getElementById('signed-in');
+            const googleStatus = document.getElementById('google-status');
+
+            if (signedIn && currentUser) {
+                // Show signed-in state
+                signedOutEl.classList.add('hidden');
+                signedInEl.classList.remove('hidden');
+                
+                // Update user info
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-email').textContent = currentUser.email;
+                
+                const avatarEl = document.getElementById('user-avatar');
+                if (currentUser.picture) {
+                    avatarEl.innerHTML = `<img src="${currentUser.picture}" alt="Profile">`;
                 } else {
-                    throw new Error('Invalid response from token exchange');
+                    avatarEl.textContent = currentUser.name.charAt(0).toUpperCase();
                 }
+
+                // Update Google status
+                googleStatus.innerHTML = '<span class="status-connected">✅ Connected</span>';
+            } else {
+                // Show signed-out state
+                signedOutEl.classList.remove('hidden');
+                signedInEl.classList.add('hidden');
                 
-            } catch (error) {
-                console.error('❌ Error in Oura token exchange:', error);
-                throw error;
+                // Update Google status
+                googleStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
             }
         }
 
-        async function syncOuraData() {
-            if (!ouraConnected || !currentUser) {
-                alert('Please connect your Oura account first');
-                return;
-            }
+        function updateOuraUI() {
+            const ouraStatus = document.getElementById('oura-status');
+            const connectBtn = document.getElementById('connect-oura-btn');
 
-            try {
-                console.log('🔄 Syncing Oura data with Google Calendar...');
-                
-                // Show loading state
-                const button = event.target;
-                const originalText = button.innerHTML;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
-                button.disabled = true;
-                
-                // Simulate API calls to:
-                // 1. Fetch latest Oura data
-                // 2. Create/update calendar events based on health data
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                console.log('✅ Oura data synced successfully!');
-                alert('✅ Health data synced with your calendar!\n\nCheck your Google Calendar for new events based on your Oura data.');
-                
-                // Restore button
-                button.innerHTML = originalText;
-                button.disabled = false;
-                
-            } catch (error) {
-                console.error('❌ Error syncing Oura data:', error);
-                alert('Failed to sync Oura data. Please try again.');
+            if (ouraConnected) {
+                ouraStatus.innerHTML = '<span class="status-connected">✅ Connected</span>';
+                connectBtn.textContent = 'Sync Oura Data';
+                connectBtn.onclick = syncOuraData;
+            } else {
+                ouraStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
+                connectBtn.textContent = 'Connect Oura Ring';
+                connectBtn.onclick = connectOura;
             }
         }
 
-        function disconnectOura() {
-            if (confirm('Are you sure you want to disconnect your Oura account?')) {
-                try {
-                    // Remove local storage
-                    localStorage.removeItem(`oura_connected_${currentUser.uid}`);
-                    
-                    // Update state
-                    ouraConnected = false;
-                    updateOuraUI();
-                    
-                    console.log('✅ Oura account disconnected');
-                    
-                    // In real implementation, also remove from Firestore
-                    // await firebase.firestore().collection('users').doc(currentUser.uid).update({
-                    //     ouraConnected: false,
-                    //     ouraTokens: firebase.firestore.FieldValue.delete()
-                    // });
-                    
-                } catch (error) {
-                    console.error('❌ Error disconnecting Oura:', error);
-                    alert('Failed to disconnect Oura account.');
-                }
-            }
+        function syncOuraData() {
+            // Placeholder for Oura data sync functionality
+            alert('Oura data sync coming soon!');
         }
 
         function generateRandomString(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
             for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
+                result += charset.charAt(Math.floor(Math.random() * charset.length));
             }
             return result;
         }
 
-        // Show authentication error
-        function showAuthError(message) {
-            const errorDiv = document.getElementById('auth-error');
-            errorDiv.textContent = message;
+        function cleanUpOAuthState() {
+            localStorage.removeItem('oauth_state');
+            localStorage.removeItem('oauth_type');
+            cleanUpUrl();
         }
 
-        // Clear authentication error
-        function clearAuthError() {
-            const errorDiv = document.getElementById('auth-error');
-            errorDiv.textContent = '';
+        function cleanUpUrl() {
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Get user-friendly error message
-        function getErrorMessage(errorCode) {
-            switch (errorCode) {
-                case 'auth/popup-closed-by-user':
-                    return 'Sign-in was cancelled.';
-                case 'auth/popup-blocked':
-                    return 'Pop-up was blocked. Please allow pop-ups and try again.';
-                case 'auth/network-request-failed':
-                    return 'Network error. Please check your connection and try again.';
-                default:
-                    return 'An error occurred during sign-in. Please try again.';
-            }
+        // Setup instructions
+        if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+            console.log('🔧 Setup Required:');
+            console.log('1. Replace GOOGLE_CLIENT_ID with your Google OAuth client ID');
+            console.log('2. Set GOOGLE_CLIENT_SECRET in Vercel environment variables');
+            console.log('3. Add redirect URI to Google Cloud Console: ' + window.location.origin);
         }
-
-        // Close modal when clicking outside
-        document.getElementById('auth-modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAuthModal();
-            }
-        });
-
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        });
-
-        // Animated counter for stats
-        function animateStats() {
-            const statNumbers = document.querySelectorAll('.stat-number');
-            
-            statNumbers.forEach(stat => {
-                const target = parseInt(stat.getAttribute('data-target'));
-                const count = parseInt(stat.innerText);
-                const increment = target / 100;
-                
-                if (count < target) {
-                    stat.innerText = Math.ceil(count + increment);
-                    setTimeout(() => animateStats(), 20);
-                } else {
-                    stat.innerText = target;
-                }
-            });
-        }
-
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    if (entry.target.classList.contains('stats')) {
-                        animateStats();
-                    }
-                }
-            });
-        }, observerOptions);
-
-        // Observe stats section
-        const statsSection = document.querySelector('.stats');
-        if (statsSection) {
-            observer.observe(statsSection);
-        }
-
-        // Add scroll effect to header
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('header');
-            if (window.scrollY > 100) {
-                header.style.background = 'rgba(255, 255, 255, 0.15)';
-            } else {
-                header.style.background = 'rgba(255, 255, 255, 0.1)';
-            }
-        });
-
-        // Welcome message
-        console.log('🚀 Welcome to your Oura + Google Calendar integration app!');
-        console.log('📱 This app is fully responsive and ready for deployment');
-        console.log('🔥 Powered by Firebase Hosting');
-        console.log('🔐 Google Authentication with Calendar permissions ready!');
-        console.log('💍 Oura Ring integration with OAuth flow ready!');
-        console.log('📅 Health data + Calendar sync ready for setup');
-        console.log('');
-        console.log('📋 Next steps:');
-        console.log('1. Replace OURA_CLIENT_ID with your actual Oura app client ID');
-        console.log('2. Add your domain to Oura app redirect URIs');
-        console.log('3. Set up Firebase Functions for secure token exchange');
-        console.log('4. Implement health data → calendar event sync logic');
     </script>
 </body>
-</html>
+</html> 
