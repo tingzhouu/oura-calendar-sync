@@ -224,8 +224,6 @@ function formatCalendarEvent(ouraData, dataType) {
         description: formatSleepDescription(ouraData),
         start: { dateTime: ouraData.bedtime_start },
         end: { dateTime: ouraData.bedtime_end },
-        colorId: '9', // Blue
-        transparency: 'transparent' // Don't show as busy
       };
 
     case 'workout':
@@ -235,7 +233,6 @@ function formatCalendarEvent(ouraData, dataType) {
         description: formatWorkoutDescription(ouraData),
         start: { dateTime: ouraData.start_datetime },
         end: { dateTime: ouraData.end_datetime },
-        colorId: '10', // Green
       };
 
     case 'session':
@@ -248,7 +245,6 @@ function formatCalendarEvent(ouraData, dataType) {
         description: formatSessionDescription(ouraData),
         start: { dateTime: ouraData.start_datetime },
         end: { dateTime: ouraData.end_datetime },
-        colorId: '6', // Purple
       };
 
     default:
