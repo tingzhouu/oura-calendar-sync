@@ -991,26 +991,51 @@
 
         async function exchangeOuraCode(code, userId) {
             try {
-                // This would normally be done in your backend for security
-                // For demo purposes, we'll simulate the connection
                 console.log('🔄 Exchanging Oura code for access token...');
                 
-                // Simulate API call delay
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Mark as connected (in real app, this would happen after successful token exchange)
-                localStorage.setItem(`oura_connected_${userId}`, 'true');
-                ouraConnected = true;
-                updateOuraUI();
-                
-                console.log('✅ Oura account connected successfully!');
-                
-                // Store user info in Firestore (simulated)
-                // await firebase.firestore().collection('users').doc(userId).update({
-                //     ouraConnected: true,
-                //     ouraTokens: { /* encrypted tokens */ },
-                //     lastOuraSync: firebase.firestore.FieldValue.serverTimestamp()
-                // });
+                // Call backend API to exchange code for tokens
+                const response = await fetch('https://YOUR_VERCEL_APP.vercel.app/api/exchange-oura-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        userId: userId,
+                        redirectUri: decodeURIComponent(OURA_REDIRECT_URI)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Token exchange failed');
+                }
+
+                if (result.success && result.tokens) {
+                    // Store tokens securely in Firestore
+                    await firebase.firestore().collection('users').doc(userId).set({
+                        oura_tokens: {
+                            access_token: result.tokens.access_token,
+                            refresh_token: result.tokens.refresh_token,
+                            token_type: result.tokens.token_type,
+                            expires_in: result.tokens.expires_in,
+                            scope: result.tokens.scope,
+                            created_at: firebase.firestore.FieldValue.serverTimestamp()
+                        },
+                        oura_connected: true,
+                        last_oura_sync: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+
+                    // Update local state
+                    localStorage.setItem(`oura_connected_${userId}`, 'true');
+                    ouraConnected = true;
+                    updateOuraUI();
+                    
+                    console.log('✅ Oura account connected successfully!');
+                } else {
+                    throw new Error('Invalid response from token exchange');
+                }
                 
             } catch (error) {
                 console.error('❌ Error in Oura token exchange:', error);
