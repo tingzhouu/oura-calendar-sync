@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node"
-    }
-  },
-  "env": {
-    "OURA_CLIENT_SECRET": "@oura-client-secret"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
