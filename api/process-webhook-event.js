@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       }, { ex: WEBHOOK_EVENT_TTL });
 
       return res.status(500).json({
-        error: 'Processing failed, will retry',
+        error: `Processing failed, check error: ${error.message}`,
         retries,
         eventKey
       });
