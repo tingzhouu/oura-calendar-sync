@@ -172,6 +172,7 @@ Choose different calendars for each event type:
 | `/api/update-calendar-prefs`   | GET/POST | Manage calendar preferences             |
 | `/api/get-oura-status`         | GET      | Check Oura connection status            |
 | `/api/refresh-google-token`    | POST     | Refresh expired Google tokens           |
+| `/api/refresh-oura-token`      | POST     | Refresh expired Oura tokens             |
 | `/api/user-mapping`            | GET/POST | Debug user ID mappings                  |
 
 ## 🔐 Environment Variables

@@ -284,6 +284,24 @@
                 <p style="margin: 1rem 0; opacity: 0.8;">
                     Connect with Google to sync health data to your calendar
                 </p>
+                <div id="calendar-prefs" class="calendar-prefs hidden">
+                    <h4>Calendar Preferences</h4>
+                    <div class="pref-group">
+                        <label for="sleep-calendar">Sleep Events:</label>
+                        <select id="sleep-calendar"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="workout-calendar">Workout Events:</label>
+                        <select id="workout-calendar"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="session-calendar">Session Events:</label>
+                        <select id="session-calendar"></select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="updateCalendarPrefs()" style="margin-top: 1rem;">
+                        Save Preferences
+                    </button>
+                </div>
             </div>
 
             <!-- Oura Ring Card -->
@@ -303,21 +321,6 @@
                     <button class="btn btn-oura" onclick="connectOura()" id="connect-oura-btn">
                         Connect Oura Ring
                     </button>
-                </div>
-                <div id="calendar-prefs" class="calendar-prefs hidden">
-                    <h4>Calendar Preferences</h4>
-                    <div class="pref-group">
-                        <label for="sleep-calendar">Sleep Events:</label>
-                        <select id="sleep-calendar" onchange="updateCalendarPrefs()"></select>
-                    </div>
-                    <div class="pref-group">
-                        <label for="workout-calendar">Workout Events:</label>
-                        <select id="workout-calendar" onchange="updateCalendarPrefs()"></select>
-                    </div>
-                    <div class="pref-group">
-                        <label for="session-calendar">Session Events:</label>
-                        <select id="session-calendar" onchange="updateCalendarPrefs()"></select>
-                    </div>
                 </div>
             </div>
         </div>
@@ -549,24 +552,38 @@
                 // Update Google status
                 googleStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
             }
+            
+            // Update calendar preferences visibility
+            updateCalendarPrefsVisibility();
+        }
+
+        function updateCalendarPrefsVisibility() {
+            const calendarPrefs = document.getElementById('calendar-prefs');
+            
+            // Show calendar preferences only if both Google and Oura are connected
+            if (currentUser && ouraConnected) {
+                calendarPrefs.classList.remove('hidden');
+            } else {
+                calendarPrefs.classList.add('hidden');
+            }
         }
 
         function updateOuraUI() {
             const ouraStatus = document.getElementById('oura-status');
             const connectBtn = document.getElementById('connect-oura-btn');
-            const calendarPrefs = document.getElementById('calendar-prefs');
 
             if (ouraConnected) {
                 ouraStatus.innerHTML = '<span class="status-connected">✅ Connected</span>';
-                connectBtn.textContent = 'Sync Oura Data';
-                connectBtn.onclick = syncOuraData;
-                calendarPrefs.classList.remove('hidden');
+                connectBtn.textContent = 'Reconnect Oura Ring';
+                connectBtn.onclick = connectOura;
             } else {
                 ouraStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
                 connectBtn.textContent = 'Connect Oura Ring';
                 connectBtn.onclick = connectOura;
-                calendarPrefs.classList.add('hidden');
             }
+            
+            // Update calendar preferences visibility
+            updateCalendarPrefsVisibility();
         }
 
         async function loadCalendarPreferences() {
@@ -611,7 +628,14 @@
         async function updateCalendarPrefs() {
             if (!currentUser) return;
 
+            const saveButton = document.querySelector('#calendar-prefs button');
+            const originalText = saveButton.textContent;
+
             try {
+                // Show loading state
+                saveButton.textContent = 'Saving...';
+                saveButton.disabled = true;
+
                 const preferences = {
                     sleep: document.getElementById('sleep-calendar').value,
                     workout: document.getElementById('workout-calendar').value,
@@ -635,17 +659,25 @@
                 }
 
                 console.log('✅ Calendar preferences updated successfully');
+                
+                // Show success feedback
+                saveButton.textContent = 'Saved ✅';
+                setTimeout(() => {
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                }, 2000);
 
             } catch (error) {
                 console.error('❌ Error updating calendar preferences:', error);
                 alert('Failed to update calendar preferences. Please try again.');
+                
+                // Reset button on error
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
             }
         }
 
-        function syncOuraData() {
-            // Placeholder for Oura data sync functionality
-            alert('Oura data sync coming soon!');
-        }
+
 
         function generateRandomString(length) {
             const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

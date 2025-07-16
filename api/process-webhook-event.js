@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     }
 
     // Fetch full data from Oura API based on event type
-    const ouraData = await fetchOuraData(event, tokens.access_token);
+    const ouraData = await fetchOuraData(event, googleUserId);
     if (!ouraData) {
       throw new Error('Failed to fetch Oura data');
     }
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function fetchOuraData(event, accessToken) {
+async function fetchOuraData(event, googleUserId) {
   const baseUrl = 'https://api.ouraring.com/v2';
   let endpoint;
 
@@ -107,14 +107,48 @@ async function fetchOuraData(event, accessToken) {
       throw new Error(`Unsupported data type: ${event.data_type}`);
   }
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  // Get current Oura tokens
+  let ouraTokens = await kv.get(`oura_tokens:${googleUserId}`);
+  let response = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
-      'Authorization': `Bearer ${accessToken}`
+      'Authorization': `Bearer ${ouraTokens.access_token}`
     }
   });
 
+  // If token expired, try to refresh and retry
+  if (response.status === 401) {
+    console.log('🔄 Oura access token expired, attempting refresh...');
+    
+    const refreshResponse = await fetch(`${process.env.VERCEL_URL || 'https://oura-calendar-sync.vercel.app'}/api/refresh-oura-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId: googleUserId })
+    });
+
+    if (refreshResponse.ok) {
+      const refreshResult = await refreshResponse.json();
+      console.log('✅ Oura token refreshed successfully, retrying data fetch');
+      
+      // Retry with new token
+      response = await fetch(`${baseUrl}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${refreshResult.access_token}`
+        }
+      });
+    } else {
+      const refreshError = await refreshResponse.json();
+      if (refreshError.reauth_required) {
+        throw new Error('User needs to re-authenticate with Oura');
+      }
+      throw new Error('Failed to refresh Oura access token');
+    }
+  }
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch Oura data: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch Oura data: ${response.status} - ${errorText}`);
   }
 
   return response.json();

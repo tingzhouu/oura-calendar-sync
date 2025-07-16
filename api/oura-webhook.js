@@ -37,12 +37,12 @@ export default async function handler(req, res) {
       const event = req.body;
 
       // Validate webhook event
-      if (!event || !event.event_type || !event.data_type || !event.user_id) {
+      if (!event || !event.event_type || !event.data_type || !event.user_id  || !event.object_id) {
         console.error('❌ Invalid webhook event:', event);
         return res.status(400).json({ error: 'Invalid webhook event' });
       }
 
-      console.log(`📥 Received ${event.event_type} event for ${event.data_type}`);
+      console.log(`📥 Received ${event.event_type} event for ${event.data_type} ${event.object_id}`);
 
       // Store the event for processing
       const eventRecord = {
@@ -57,13 +57,18 @@ export default async function handler(req, res) {
 
       // Trigger processing asynchronously
       try {
+        console.log(`📥 Triggering async event processing for ${eventKey}`);
         fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/process-webhook-event`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ eventKey })
-        }).catch(error => {
+        })
+        .then(() => {
+          console.log(`✅ Successfully triggered processing for event: ${eventKey}`);
+        })
+        .catch(error => {
           console.error('❌ Failed to trigger event processing:', error);
           // We'll retry through the cleanup job
         });
