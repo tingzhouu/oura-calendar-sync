@@ -14,7 +14,7 @@ Automatically sync your Oura Ring health data (sleep, workouts, and sessions) to
 - 💤 **Sleep Tracking**: Detailed sleep events with scores, stages, and heart rate data
 - 🏃‍♂️ **Workout Events**: Exercise tracking with duration, calories, and heart rate
 - 🧘‍♂️ **Session Events**: Meditation and breathing sessions with calculated statistics
-- 🔐 **Secure Authentication**: Direct OAuth with Google and Oura (no Firebase required)
+- 🔐 **Secure Authentication**: Direct OAuth with Google and Oura
 - 🔄 **Token Management**: Automatic refresh of expired access tokens
 - 🎨 **Modern UI**: Clean, responsive interface with real-time connection status
 
