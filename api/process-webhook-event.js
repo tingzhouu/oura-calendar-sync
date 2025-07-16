@@ -26,9 +26,16 @@ export default async function handler(req, res) {
 
     console.log(`🔄 Processing webhook event: ${eventKey}`, event);
 
-    // Get user's tokens
-    const tokens = await kv.get(`oura_tokens:${event.user_id}`);
-    const googleTokens = await kv.get(`google_tokens:${event.user_id}`);
+    // Get Google user ID from Oura user ID mapping
+    const googleUserId = await kv.get(`oura_user_mapping:${event.user_id}`);
+    if (!googleUserId) {
+      console.error('❌ No Google user mapping found for Oura user:', event.user_id);
+      return res.status(400).json({ error: 'User mapping not found' });
+    }
+
+    // Get user's tokens using Google user ID
+    const tokens = await kv.get(`oura_tokens:${googleUserId}`);
+    const googleTokens = await kv.get(`google_tokens:${googleUserId}`);
 
     if (!tokens || !googleTokens) {
       console.error('❌ Missing user tokens:', { oura: !!tokens, google: !!googleTokens });
@@ -42,7 +49,7 @@ export default async function handler(req, res) {
     }
 
     // Create calendar event
-    await createGoogleCalendarEvent(ouraData, event.data_type, googleTokens.access_token);
+    await createGoogleCalendarEvent(ouraData, event.data_type, googleUserId);
 
     // Mark event as processed
     await kv.set(eventKey, {
@@ -108,26 +115,62 @@ async function fetchOuraData(event, accessToken) {
   return response.json();
 }
 
-async function createGoogleCalendarEvent(ouraData, dataType, accessToken) {
+async function createGoogleCalendarEvent(ouraData, dataType, userId) {
   // Format event data based on type
   const event = formatCalendarEvent(ouraData, dataType);
 
   // Get user's calendar preference or use primary
-  const calendarPrefs = await kv.get(`calendar_prefs:${event.user_id}`);
+  const calendarPrefs = await kv.get(`calendar_prefs:${userId}`);
   const calendarId = calendarPrefs?.[dataType] || 'primary';
 
-  // Create event in Google Calendar
-  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+  // Try to create the event with current access token
+  let googleTokens = await kv.get(`google_tokens:${userId}`);
+  let response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${googleTokens.access_token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(event)
   });
 
+  // If token expired, try to refresh and retry
+  if (response.status === 401) {
+    console.log('🔄 Access token expired, attempting refresh...');
+    
+    const refreshResponse = await fetch(`${process.env.VERCEL_URL || 'https://oura-calendar-sync.vercel.app'}/api/refresh-google-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId })
+    });
+
+    if (refreshResponse.ok) {
+      const refreshResult = await refreshResponse.json();
+      console.log('✅ Token refreshed successfully, retrying calendar event creation');
+      
+      // Retry with new token
+      response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${refreshResult.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(event)
+      });
+    } else {
+      const refreshError = await refreshResponse.json();
+      if (refreshError.reauth_required) {
+        throw new Error('User needs to re-authenticate with Google');
+      }
+      throw new Error('Failed to refresh access token');
+    }
+  }
+
   if (!response.ok) {
-    throw new Error(`Failed to create calendar event: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Failed to create calendar event: ${response.status} - ${errorText}`);
   }
 
   return response.json();
@@ -136,8 +179,9 @@ async function createGoogleCalendarEvent(ouraData, dataType, accessToken) {
 function formatCalendarEvent(ouraData, dataType) {
   switch (dataType) {
     case 'sleep':
+      const sleepDuration = calculateDuration(ouraData.bedtime_start, ouraData.bedtime_end);
       return {
-        summary: `💤 Sleep: ${formatDuration(ouraData.duration)}`,
+        summary: `💤 Sleep: ${formatDuration(sleepDuration)}`,
         description: formatSleepDescription(ouraData),
         start: { dateTime: ouraData.bedtime_start },
         end: { dateTime: ouraData.bedtime_end },
@@ -146,8 +190,9 @@ function formatCalendarEvent(ouraData, dataType) {
       };
 
     case 'workout':
+      const workoutDuration = calculateDuration(ouraData.start_datetime, ouraData.end_datetime);
       return {
-        summary: `🏃‍♂️ ${ouraData.activity}: ${formatDuration(ouraData.duration)}`,
+        summary: `🏃‍♂️ ${ouraData.activity}: ${formatDuration(workoutDuration)}`,
         description: formatWorkoutDescription(ouraData),
         start: { dateTime: ouraData.start_datetime },
         end: { dateTime: ouraData.end_datetime },
@@ -155,8 +200,12 @@ function formatCalendarEvent(ouraData, dataType) {
       };
 
     case 'session':
+      const sessionDuration = calculateDuration(ouraData.start_datetime, ouraData.end_datetime);
+      const sessionHrStats = calculateArrayStats(ouraData.heart_rate?.items);
+      const avgHrText = sessionHrStats.avg ? ` (${sessionHrStats.avg} bpm avg)` : '';
+      
       return {
-        summary: `🧘‍♂️ ${ouraData.type}: ${formatDuration(ouraData.duration)}`,
+        summary: `🧘‍♂️ ${ouraData.type}: ${formatDuration(sessionDuration)}${avgHrText}`,
         description: formatSessionDescription(ouraData),
         start: { dateTime: ouraData.start_datetime },
         end: { dateTime: ouraData.end_datetime },
@@ -168,14 +217,58 @@ function formatCalendarEvent(ouraData, dataType) {
   }
 }
 
+function calculateDuration(startDateTime, endDateTime) {
+  if (!startDateTime || !endDateTime) {
+    return 0;
+  }
+  
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
+  
+  // Return duration in seconds
+  return Math.floor((end - start) / 1000);
+}
+
+function calculateArrayStats(items) {
+  if (!items || !Array.isArray(items)) {
+    return { avg: null, min: null, max: null, count: 0 };
+  }
+  
+  // Filter out null values
+  const validValues = items.filter(value => value !== null && value !== undefined && !isNaN(value));
+  
+  if (validValues.length === 0) {
+    return { avg: null, min: null, max: null, count: 0 };
+  }
+  
+  const sum = validValues.reduce((acc, val) => acc + val, 0);
+  const avg = sum / validValues.length;
+  const min = Math.min(...validValues);
+  const max = Math.max(...validValues);
+  
+  return {
+    avg: Math.round(avg * 10) / 10, // Round to 1 decimal place
+    min: Math.round(min * 10) / 10,
+    max: Math.round(max * 10) / 10,
+    count: validValues.length
+  };
+}
+
 function formatDuration(seconds) {
+  if (!seconds || seconds <= 0) {
+    return '0m';
+  }
+  
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
 function formatSleepDescription(data) {
+  const totalDuration = calculateDuration(data.bedtime_start, data.bedtime_end);
+  
   return `Sleep Score: ${data.score || 'N/A'}
+Total Sleep Time: ${formatDuration(totalDuration)}
 Sleep Stages:
 - Deep: ${formatDuration(data.deep_sleep_duration || 0)}
 - REM: ${formatDuration(data.rem_sleep_duration || 0)}
@@ -188,8 +281,10 @@ Respiratory Rate: ${data.average_breath || 'N/A'} br/min`;
 }
 
 function formatWorkoutDescription(data) {
+  const duration = calculateDuration(data.start_datetime, data.end_datetime);
+  
   return `Activity: ${data.activity}
-Duration: ${formatDuration(data.duration)}
+Duration: ${formatDuration(duration)}
 Distance: ${data.distance ? `${(data.distance / 1000).toFixed(2)} km` : 'N/A'}
 Calories: ${data.calories || 'N/A'} kcal
 Heart Rate:
@@ -198,10 +293,23 @@ Heart Rate:
 }
 
 function formatSessionDescription(data) {
+  const duration = calculateDuration(data.start_datetime, data.end_datetime);
+  
+  // Calculate heart rate statistics from raw data
+  const hrStats = calculateArrayStats(data.heart_rate?.items);
+  
+  // Calculate HRV statistics from raw data
+  const hrvStats = calculateArrayStats(data.heart_rate_variability?.items);
+  
   return `Type: ${data.type}
-Duration: ${formatDuration(data.duration)}
+Duration: ${formatDuration(duration)}
 Heart Rate:
-- Average: ${data.average_heart_rate || 'N/A'} bpm
-- Max: ${data.max_heart_rate || 'N/A'} bpm
-HRV: ${data.average_hrv || 'N/A'} ms`;
+- Average: ${hrStats.avg !== null ? `${hrStats.avg} bpm` : 'N/A'}
+- Min: ${hrStats.min !== null ? `${hrStats.min} bpm` : 'N/A'}
+- Max: ${hrStats.max !== null ? `${hrStats.max} bpm` : 'N/A'}
+HRV:
+- Average: ${hrvStats.avg !== null ? `${hrvStats.avg} ms` : 'N/A'}
+- Min: ${hrvStats.min !== null ? `${hrvStats.min} ms` : 'N/A'}
+- Max: ${hrvStats.max !== null ? `${hrvStats.max} ms` : 'N/A'}
+Data Points: ${hrStats.count} HR readings, ${hrvStats.count} HRV readings`;
 } 
