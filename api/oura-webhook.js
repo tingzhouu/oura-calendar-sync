@@ -58,23 +58,34 @@ export default async function handler(req, res) {
       // Trigger processing asynchronously
       try {
         console.log(`📥 Triggering async event processing for ${eventKey}`);
-        fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/process-webhook-event`, {
+        
+        // Use a timeout to ensure we respond quickly while still ensuring the fetch is sent
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Processing trigger timeout')), 2500)
+        );
+        
+        const processingPromise = fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/process-webhook-event`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ eventKey })
-        })
-        .then(() => {
-          console.log(`✅ Successfully triggered processing for event: ${eventKey}`);
-        })
-        .catch(error => {
-          console.error('❌ Failed to trigger event processing:', error);
-          // We'll retry through the cleanup job
+        }).then(response => {
+          console.log(`✅ Successfully triggered processing for event: ${eventKey}, status: ${response.status}`);
+          return response;
         });
+
+        // Wait to ensure request is sent, but don't wait for completion
+        await Promise.race([processingPromise, timeoutPromise]).catch(error => {
+          if (error.message.includes('timeout')) {
+            console.log('⏱️ Processing trigger timed out (request likely sent)');
+          } else {
+            console.error('❌ Failed to trigger event processing:', error);
+          }
+        });
+
       } catch (error) {
         console.error('❌ Error triggering event processing:', error);
-        // We'll retry through the cleanup job
       }
 
       // Respond quickly (under 10 seconds)
