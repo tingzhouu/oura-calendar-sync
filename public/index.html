@@ -449,7 +449,7 @@
                 const response = await fetch(`${API_BASE_URL}/get-oura-status?userId=${currentUser.id}`);
                 const result = await response.json();
                 
-                if (response.ok) {
+                                    if (response.ok) {
                     ouraConnected = result.connected;
                     updateOuraUI();
                 }
@@ -457,6 +457,8 @@
                 console.error('❌ Error checking Oura status:', error);
             }
         }
+
+
 
         function updateAuthUI(signedIn) {
             const signedOutEl = document.getElementById('signed-out');
