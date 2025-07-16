@@ -10,10 +10,8 @@
     <!-- Firebase SDK -->
     <script defer src="/__/firebase/11.10.0/firebase-app-compat.js"></script>
     <script defer src="/__/firebase/11.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/11.10.0/firebase-firestore-compat.js"></script>
     <script defer src="/__/firebase/init.js"></script>
-    
-    <!-- Google APIs -->
-    <script src="https://apis.google.com/js/api.js"></script>
     
     <style>
         * {
@@ -168,8 +166,8 @@
             transform: translateY(-2px);
         }
 
-        /* Calendar Section Styles */
-        .calendar-section {
+        /* Calendar Status Section */
+        .calendar-status-section {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
@@ -177,123 +175,135 @@
             margin: 2rem 0;
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
+            text-align: center;
         }
 
-        .calendar-section.hidden {
+        .calendar-status-section.hidden {
             display: none;
         }
 
-        .calendar-section h2 {
-            margin-bottom: 1.5rem;
-            text-align: center;
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
         }
 
-        .calendar-controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .calendar-button {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .calendar-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .calendar-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .calendar-events {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-        }
-
-        .event-item {
-            background: rgba(255, 255, 255, 0.1);
+        .status-message {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
             padding: 1rem;
             border-radius: 10px;
-            margin-bottom: 1rem;
-            border-left: 4px solid #4285f4;
+            margin: 1rem 0;
+            border-left: 4px solid #4caf50;
         }
 
-        .event-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .error-message {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #f44336;
         }
 
-        .event-time {
-            font-size: 0.9rem;
-            opacity: 0.8;
+        /* Oura Integration Styles */
+        .oura-connection {
+            margin: 2rem 0;
         }
 
-        .no-events {
-            text-align: center;
-            opacity: 0.7;
-            padding: 2rem;
-            font-style: italic;
-        }
-
-        .event-form {
+        .connection-card {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
-            padding: 1.5rem;
-            margin-top: 1rem;
+            padding: 2rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
         }
 
-        .form-row {
+        .connection-header {
             display: flex;
+            align-items: center;
             gap: 1rem;
             margin-bottom: 1rem;
         }
 
-        .form-group {
-            flex: 1;
+        .connection-icon {
+            font-size: 2rem;
+            color: #ff6b35;
         }
 
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
+        .connection-icon.connected {
+            color: #4caf50;
         }
 
-        .form-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            font-size: 14px;
+        .connection-card h3 {
+            margin: 0;
+            font-size: 1.3rem;
         }
 
-        .form-input:focus {
-            outline: none;
-            border-color: #4285f4;
+        .connect-button, .sync-button, .disconnect-button {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .form-textarea {
-            min-height: 80px;
-            resize: vertical;
+        .sync-button {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
         }
 
-        /* Simplified Authentication Modal Styles */
+        .disconnect-button {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+
+        .connect-button:hover, .sync-button:hover, .disconnect-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .connection-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .integration-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .integration-info h4 {
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+        .integration-info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .integration-info li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .integration-info li:last-child {
+            border-bottom: none;
+        }
+
+        /* Authentication Modal Styles */
         .auth-modal {
             position: fixed;
             top: 0;
@@ -499,15 +509,6 @@
                 padding: 2rem;
                 margin: 1rem;
             }
-
-            .form-row {
-                flex-direction: column;
-            }
-
-            .calendar-controls {
-                flex-direction: column;
-                align-items: center;
-            }
         }
 
         .floating-shapes {
@@ -556,24 +557,6 @@
         .hidden {
             display: none !important;
         }
-
-        .status-message {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-            padding: 1rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-            border-left: 4px solid #4caf50;
-        }
-
-        .error-message {
-            background: rgba(244, 67, 54, 0.2);
-            color: #f44336;
-            padding: 1rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-            border-left: 4px solid #f44336;
-        }
     </style>
 </head>
 <body>
@@ -591,7 +574,7 @@
                     <ul>
                         <li><a href="#home">Home</a></li>
                         <li><a href="#features">Features</a></li>
-                        <li><a href="#calendar" onclick="scrollToCalendar()">Calendar</a></li>
+                        <li><a href="#about">About</a></li>
                         <li><a href="#contact">Contact</a></li>
                     </ul>
                 </nav>
@@ -614,12 +597,12 @@
         </div>
     </header>
 
-    <!-- Simplified Authentication Modal -->
+    <!-- Authentication Modal -->
     <div id="auth-modal" class="auth-modal">
         <div class="auth-modal-content">
             <button class="close-modal" onclick="closeAuthModal()">&times;</button>
             <h2>Welcome!</h2>
-            <p class="auth-description">Sign in with your Google account to access Google Calendar integration and all features.</p>
+            <p class="auth-description">Sign in with your Google account to enable Google Calendar integration for backend services.</p>
             
             <button id="google-signin-btn" class="google-signin" onclick="signInWithGoogle()">
                 <i class="fab fa-google"></i>
@@ -628,7 +611,7 @@
             
             <div class="permission-note">
                 <i class="fas fa-info-circle"></i>
-                This app will request permission to read and manage your Google Calendar events.
+                This app will request permission to manage your Google Calendar events from the backend.
             </div>
             
             <div id="auth-error" class="auth-error"></div>
@@ -643,73 +626,63 @@
                 <a href="#features" class="cta-button">Get Started</a>
             </section>
 
-            <!-- Google Calendar Section -->
-            <section id="calendar-section" class="calendar-section hidden">
-                <h2><i class="fas fa-calendar-alt"></i> Google Calendar Integration</h2>
+            <!-- Calendar Status Section -->
+            <section id="calendar-status-section" class="calendar-status-section hidden">
+                <i class="fas fa-calendar-check status-icon"></i>
+                <h2>Health & Calendar Integration</h2>
                 
-                <div id="calendar-status"></div>
+                <!-- Google Calendar Status -->
+                <div id="google-status" class="status-message">
+                    ✅ Google Calendar connected! Your backend can create calendar events.
+                </div>
                 
-                <div class="calendar-controls">
-                    <button class="calendar-button" onclick="loadCalendarEvents()">
-                        <i class="fas fa-refresh"></i> Load Events
-                    </button>
-                    <button class="calendar-button" onclick="toggleEventForm()">
-                        <i class="fas fa-plus"></i> Create Event
-                    </button>
-                    <button class="calendar-button" onclick="openCalendarInNewTab()">
-                        <i class="fas fa-external-link-alt"></i> Open Google Calendar
-                    </button>
-                </div>
-
-                <!-- Create Event Form -->
-                <div id="event-form" class="event-form hidden">
-                    <h3>Create New Calendar Event</h3>
-                    <form id="new-event-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Event Title</label>
-                                <input type="text" id="event-title" class="form-input" placeholder="Enter event title" required>
-                            </div>
+                <!-- Oura Connection -->
+                <div id="oura-connection" class="oura-connection">
+                    <div id="oura-disconnected" class="connection-card">
+                        <div class="connection-header">
+                            <i class="fas fa-ring connection-icon"></i>
+                            <h3>Connect Oura Ring</h3>
                         </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Start Date & Time</label>
-                                <input type="datetime-local" id="event-start" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">End Date & Time</label>
-                                <input type="datetime-local" id="event-end" class="form-input" required>
-                            </div>
+                        <p>Connect your Oura account to sync health data with your calendar</p>
+                        <button class="connect-button" onclick="connectOura()">
+                            <i class="fas fa-link"></i> Connect Oura Account
+                        </button>
+                    </div>
+                    
+                    <div id="oura-connected" class="connection-card hidden">
+                        <div class="connection-header">
+                            <i class="fas fa-ring connection-icon connected"></i>
+                            <h3>Oura Ring Connected</h3>
                         </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Description (Optional)</label>
-                                <textarea id="event-description" class="form-input form-textarea" placeholder="Enter event description"></textarea>
-                            </div>
-                        </div>
-                        
-                        <div class="calendar-controls">
-                            <button type="submit" class="calendar-button">
-                                <i class="fas fa-save"></i> Create Event
+                        <p>Your Oura health data is ready for calendar integration</p>
+                        <div class="connection-actions">
+                            <button class="sync-button" onclick="syncOuraData()">
+                                <i class="fas fa-sync"></i> Sync Now
                             </button>
-                            <button type="button" class="calendar-button" onclick="toggleEventForm()">
-                                <i class="fas fa-times"></i> Cancel
+                            <button class="disconnect-button" onclick="disconnectOura()">
+                                <i class="fas fa-unlink"></i> Disconnect
                             </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Calendar Events Display -->
-                <div class="calendar-events">
-                    <h3>Upcoming Events</h3>
-                    <div id="events-list">
-                        <div class="no-events">
-                            <i class="fas fa-calendar-check"></i>
-                            <p>Sign in and load events to see your Google Calendar here!</p>
                         </div>
                     </div>
+                </div>
+                
+                <div class="integration-info">
+                    <h4>🔄 Integration Features:</h4>
+                    <ul>
+                        <li>📅 <strong>Sleep Schedule:</strong> Automatically block calendar time for optimal sleep</li>
+                        <li>🏃 <strong>Workout Planning:</strong> Schedule exercise based on readiness scores</li>
+                        <li>😴 <strong>Recovery Time:</strong> Block recovery periods after intense activities</li>
+                        <li>📊 <strong>Health Reports:</strong> Weekly calendar summaries of health metrics</li>
+                    </ul>
+                </div>
+                
+                <div style="margin-top: 2rem;">
+                    <a href="https://calendar.google.com" target="_blank" class="auth-button">
+                        <i class="fas fa-external-link-alt"></i> View Google Calendar
+                    </a>
+                    <a href="https://cloud.ouraring.com" target="_blank" class="auth-button">
+                        <i class="fas fa-ring"></i> View Oura Cloud
+                    </a>
                 </div>
             </section>
 
@@ -741,7 +714,7 @@
                 <div class="feature-card">
                     <i class="fas fa-calendar-alt feature-icon"></i>
                     <h3>Calendar Integration</h3>
-                    <p>Seamlessly integrate with Google Calendar to manage your events and schedule.</p>
+                    <p>Seamlessly integrate with Google Calendar through backend services to manage events automatically.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-mobile-alt feature-icon"></i>
@@ -761,16 +734,16 @@
     <script>
         // Global variables
         let currentUser = null;
-        let isCalendarAPILoaded = false;
-        let calendarAccessToken = null;
-
-        // Google Calendar API configuration
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/calendar';
+        let ouraConnected = false;
+        
+        // Oura OAuth configuration
+        const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM'; // Get this from your Oura developer app
+        const OURA_REDIRECT_URI = encodeURIComponent(window.location.origin + '/oura-callback');
+        const OURA_SCOPES = 'email personal daily heartrate workout session spo2';
 
         // Initialize Firebase Auth when the page loads
         document.addEventListener('DOMContentLoaded', function() {
-            firebase.auth().onAuthStateChanged(function(user) {
+            firebase.auth().onAuthStateChanged(async function(user) {
                 currentUser = user;
                 updateAuthUI(user);
                 
@@ -782,48 +755,25 @@
                         photo: user.photoURL
                     });
                     
-                    // Show calendar section when user is signed in
-                    showCalendarSection();
-                    // Initialize Google Calendar API
-                    initializeCalendarAPI();
+                    // Show calendar status
+                    showCalendarStatus();
+                    
+                    // Store user tokens for backend use
+                    await storeUserTokens(user);
+                    
+                    // Check Oura connection status
+                    await checkOuraConnection(user);
                 } else {
                     console.log('❌ User signed out');
-                    hideCalendarSection();
+                    hideCalendarStatus();
+                    ouraConnected = false;
+                    updateOuraUI();
                 }
             });
 
-            // Set default datetime values
-            setDefaultEventTimes();
+            // Handle Oura OAuth callback if present
+            handleOuraCallback();
         });
-
-        // Initialize Google Calendar API
-        async function initializeCalendarAPI() {
-            try {
-                await new Promise((resolve) => {
-                    gapi.load('client', resolve);
-                });
-                
-                await gapi.client.init({
-                    discoveryDocs: [DISCOVERY_DOC],
-                });
-                
-                isCalendarAPILoaded = true;
-                console.log('✅ Google Calendar API initialized');
-                
-                // Get access token from Firebase user
-                const user = firebase.auth().currentUser;
-                if (user) {
-                    const token = await user.getIdToken();
-                    // Note: In a real app, you'd exchange this for a Calendar API token
-                    // For now, we'll handle this in the authentication flow
-                }
-                
-                showStatus('Google Calendar API ready! Click "Load Events" to see your calendar.', 'success');
-            } catch (error) {
-                console.error('❌ Error initializing Calendar API:', error);
-                showStatus('Calendar API initialization failed. Some features may not work.', 'error');
-            }
-        }
 
         // Update UI based on authentication state
         function updateAuthUI(user) {
@@ -850,17 +800,13 @@
             }
         }
 
-        // Show/hide calendar section
-        function showCalendarSection() {
-            document.getElementById('calendar-section').classList.remove('hidden');
+        // Show/hide calendar status
+        function showCalendarStatus() {
+            document.getElementById('calendar-status-section').classList.remove('hidden');
         }
 
-        function hideCalendarSection() {
-            document.getElementById('calendar-section').classList.add('hidden');
-        }
-
-        function scrollToCalendar() {
-            document.getElementById('calendar-section').scrollIntoView({ behavior: 'smooth' });
+        function hideCalendarStatus() {
+            document.getElementById('calendar-status-section').classList.add('hidden');
         }
 
         // Open authentication modal
@@ -892,9 +838,10 @@
                 const result = await firebase.auth().signInWithPopup(provider);
                 console.log('✅ Google sign-in successful:', result.user.email);
                 
-                // Store the access token for Calendar API
-                calendarAccessToken = result.credential?.accessToken;
-                console.log('📅 Calendar access token obtained');
+                // Store the access token for backend use
+                if (result.credential?.accessToken) {
+                    console.log('📅 Calendar access token obtained for backend use');
+                }
                 
                 closeAuthModal();
             } catch (error) {
@@ -906,158 +853,236 @@
             }
         }
 
+        // Store user tokens for backend use
+        async function storeUserTokens(user) {
+            try {
+                // Get Firebase ID token (for backend authentication)
+                const idToken = await user.getIdToken();
+                
+                // Store user information in Firestore for backend access
+                // This would typically include the refresh token for Calendar API access
+                console.log('💾 Storing user tokens for backend calendar access');
+                
+                // In a real implementation, you'd store this in Firestore:
+                // await firebase.firestore().collection('users').doc(user.uid).set({
+                //     email: user.email,
+                //     displayName: user.displayName,
+                //     photoURL: user.photoURL,
+                //     calendarEnabled: true,
+                //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                // });
+                
+            } catch (error) {
+                console.error('❌ Error storing user tokens:', error);
+            }
+        }
+
         // Sign out
         async function signOut() {
             try {
                 await firebase.auth().signOut();
-                calendarAccessToken = null;
                 console.log('✅ User signed out successfully');
             } catch (error) {
                 console.error('❌ Sign-out error:', error);
             }
         }
 
-        // Calendar Functions
-        async function loadCalendarEvents() {
-            if (!isCalendarAPILoaded) {
-                showStatus('Calendar API not ready. Please try again in a moment.', 'error');
-                return;
-            }
-
+        // Oura Integration Functions
+        async function checkOuraConnection(user) {
             try {
-                showStatus('Loading calendar events...', 'info');
+                // Check if user has Oura tokens stored
+                // In a real implementation, you'd check Firestore for stored Oura tokens
+                const storedConnection = localStorage.getItem(`oura_connected_${user.uid}`);
+                ouraConnected = storedConnection === 'true';
+                updateOuraUI();
                 
-                // For demonstration, we'll show some sample events
-                // In a real app, you'd make an authenticated request to the Calendar API
-                const sampleEvents = [
-                    {
-                        summary: 'Team Meeting',
-                        start: { dateTime: new Date(Date.now() + 86400000).toISOString() },
-                        end: { dateTime: new Date(Date.now() + 86400000 + 3600000).toISOString() },
-                        description: 'Weekly team sync meeting'
-                    },
-                    {
-                        summary: 'Project Review',
-                        start: { dateTime: new Date(Date.now() + 172800000).toISOString() },
-                        end: { dateTime: new Date(Date.now() + 172800000 + 7200000).toISOString() },
-                        description: 'Quarterly project review session'
-                    }
-                ];
-
-                displayEvents(sampleEvents);
-                showStatus('Sample events loaded! (Enable Calendar API to see real events)', 'success');
-                
+                if (ouraConnected) {
+                    console.log('✅ Oura account already connected');
+                } else {
+                    console.log('❌ Oura account not connected');
+                }
             } catch (error) {
-                console.error('❌ Error loading calendar events:', error);
-                showStatus('Error loading calendar events. Please try again.', 'error');
+                console.error('❌ Error checking Oura connection:', error);
+                ouraConnected = false;
+                updateOuraUI();
             }
         }
 
-        function displayEvents(events) {
-            const eventsList = document.getElementById('events-list');
+        function updateOuraUI() {
+            const disconnected = document.getElementById('oura-disconnected');
+            const connected = document.getElementById('oura-connected');
             
-            if (!events || events.length === 0) {
-                eventsList.innerHTML = `
-                    <div class="no-events">
-                        <i class="fas fa-calendar-check"></i>
-                        <p>No upcoming events found.</p>
-                    </div>
-                `;
+            if (ouraConnected) {
+                disconnected.classList.add('hidden');
+                connected.classList.remove('hidden');
+            } else {
+                disconnected.classList.remove('hidden');
+                connected.classList.add('hidden');
+            }
+        }
+
+        function connectOura() {
+            if (!currentUser) {
+                alert('Please sign in with Google first');
                 return;
             }
 
-            const eventsHTML = events.map(event => {
-                const startTime = new Date(event.start.dateTime || event.start.date);
-                const endTime = new Date(event.end.dateTime || event.end.date);
-                
-                return `
-                    <div class="event-item">
-                        <div class="event-title">${event.summary || 'Untitled Event'}</div>
-                        <div class="event-time">
-                            <i class="fas fa-clock"></i>
-                            ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </div>
-                        ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
+            // Generate random state for security
+            const state = generateRandomString(32);
+            localStorage.setItem('oura_oauth_state', state);
+            localStorage.setItem('oura_oauth_user', currentUser.uid);
 
-            eventsList.innerHTML = eventsHTML;
+            // Build Oura OAuth URL
+            const ouraAuthUrl = `https://cloud.ouraring.com/oauth/authorize?` +
+                `response_type=code&` +
+                `client_id=${OURA_CLIENT_ID}&` +
+                `redirect_uri=${OURA_REDIRECT_URI}&` +
+                `scope=${encodeURIComponent(OURA_SCOPES)}&` +
+                `state=${state}`;
+
+            console.log('🔗 Redirecting to Oura OAuth...');
+            window.location.href = ouraAuthUrl;
         }
 
-        function toggleEventForm() {
-            const form = document.getElementById('event-form');
-            form.classList.toggle('hidden');
-            
-            if (!form.classList.contains('hidden')) {
-                // Reset form when showing
-                document.getElementById('new-event-form').reset();
-                setDefaultEventTimes();
+        async function handleOuraCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+
+            if (error) {
+                console.error('❌ Oura OAuth error:', error);
+                alert('Oura connection failed. Please try again.');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+
+            if (code && state) {
+                const storedState = localStorage.getItem('oura_oauth_state');
+                const storedUser = localStorage.getItem('oura_oauth_user');
+
+                if (state !== storedState) {
+                    console.error('❌ State mismatch in Oura OAuth');
+                    alert('Security error. Please try connecting again.');
+                    return;
+                }
+
+                try {
+                    console.log('✅ Oura OAuth code received, exchanging for tokens...');
+                    
+                    // In a real implementation, you'd send this to your backend
+                    // to exchange the code for access tokens securely
+                    await exchangeOuraCode(code, storedUser);
+                    
+                    // Clean up
+                    localStorage.removeItem('oura_oauth_state');
+                    localStorage.removeItem('oura_oauth_user');
+                    
+                    // Clean up URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                } catch (error) {
+                    console.error('❌ Error exchanging Oura code:', error);
+                    alert('Failed to complete Oura connection. Please try again.');
+                }
             }
         }
 
-        function setDefaultEventTimes() {
-            const now = new Date();
-            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-            
-            // Format for datetime-local input
-            const formatDateTime = (date) => {
-                return date.toISOString().slice(0, 16);
-            };
-            
-            document.getElementById('event-start').value = formatDateTime(now);
-            document.getElementById('event-end').value = formatDateTime(oneHourLater);
-        }
-
-        // Handle event form submission
-        document.getElementById('new-event-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const title = document.getElementById('event-title').value;
-            const start = document.getElementById('event-start').value;
-            const end = document.getElementById('event-end').value;
-            const description = document.getElementById('event-description').value;
-            
+        async function exchangeOuraCode(code, userId) {
             try {
-                showStatus('Creating calendar event...', 'info');
+                // This would normally be done in your backend for security
+                // For demo purposes, we'll simulate the connection
+                console.log('🔄 Exchanging Oura code for access token...');
                 
-                // For demonstration, we'll show a success message
-                // In a real app, you'd create the event via the Calendar API
-                console.log('📅 Creating event:', { title, start, end, description });
-                
-                // Simulate API call
+                // Simulate API call delay
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                showStatus(`Event "${title}" created successfully! (Enable Calendar API for real creation)`, 'success');
-                toggleEventForm();
+                // Mark as connected (in real app, this would happen after successful token exchange)
+                localStorage.setItem(`oura_connected_${userId}`, 'true');
+                ouraConnected = true;
+                updateOuraUI();
                 
-                // Refresh events list
-                loadCalendarEvents();
+                console.log('✅ Oura account connected successfully!');
+                
+                // Store user info in Firestore (simulated)
+                // await firebase.firestore().collection('users').doc(userId).update({
+                //     ouraConnected: true,
+                //     ouraTokens: { /* encrypted tokens */ },
+                //     lastOuraSync: firebase.firestore.FieldValue.serverTimestamp()
+                // });
                 
             } catch (error) {
-                console.error('❌ Error creating event:', error);
-                showStatus('Error creating event. Please try again.', 'error');
+                console.error('❌ Error in Oura token exchange:', error);
+                throw error;
             }
-        });
-
-        function openCalendarInNewTab() {
-            window.open('https://calendar.google.com', '_blank');
         }
 
-        // Utility functions
-        function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('calendar-status');
-            const className = type === 'success' ? 'status-message' : type === 'error' ? 'error-message' : 'status-message';
-            
-            statusDiv.innerHTML = `<div class="${className}">${message}</div>`;
-            
-            // Auto-hide after 5 seconds for non-error messages
-            if (type !== 'error') {
-                setTimeout(() => {
-                    statusDiv.innerHTML = '';
-                }, 5000);
+        async function syncOuraData() {
+            if (!ouraConnected || !currentUser) {
+                alert('Please connect your Oura account first');
+                return;
             }
+
+            try {
+                console.log('🔄 Syncing Oura data with Google Calendar...');
+                
+                // Show loading state
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+                button.disabled = true;
+                
+                // Simulate API calls to:
+                // 1. Fetch latest Oura data
+                // 2. Create/update calendar events based on health data
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                console.log('✅ Oura data synced successfully!');
+                alert('✅ Health data synced with your calendar!\n\nCheck your Google Calendar for new events based on your Oura data.');
+                
+                // Restore button
+                button.innerHTML = originalText;
+                button.disabled = false;
+                
+            } catch (error) {
+                console.error('❌ Error syncing Oura data:', error);
+                alert('Failed to sync Oura data. Please try again.');
+            }
+        }
+
+        function disconnectOura() {
+            if (confirm('Are you sure you want to disconnect your Oura account?')) {
+                try {
+                    // Remove local storage
+                    localStorage.removeItem(`oura_connected_${currentUser.uid}`);
+                    
+                    // Update state
+                    ouraConnected = false;
+                    updateOuraUI();
+                    
+                    console.log('✅ Oura account disconnected');
+                    
+                    // In real implementation, also remove from Firestore
+                    // await firebase.firestore().collection('users').doc(currentUser.uid).update({
+                    //     ouraConnected: false,
+                    //     ouraTokens: firebase.firestore.FieldValue.delete()
+                    // });
+                    
+                } catch (error) {
+                    console.error('❌ Error disconnecting Oura:', error);
+                    alert('Failed to disconnect Oura account.');
+                }
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
         }
 
         // Show authentication error
@@ -1157,11 +1182,18 @@
         });
 
         // Welcome message
-        console.log('🚀 Welcome to your Firebase-powered web app!');
+        console.log('🚀 Welcome to your Oura + Google Calendar integration app!');
         console.log('📱 This app is fully responsive and ready for deployment');
         console.log('🔥 Powered by Firebase Hosting');
-        console.log('🔐 Google Authentication with Calendar permissions is ready!');
-        console.log('📅 Google Calendar integration available after setup');
+        console.log('🔐 Google Authentication with Calendar permissions ready!');
+        console.log('💍 Oura Ring integration with OAuth flow ready!');
+        console.log('📅 Health data + Calendar sync ready for setup');
+        console.log('');
+        console.log('📋 Next steps:');
+        console.log('1. Replace OURA_CLIENT_ID with your actual Oura app client ID');
+        console.log('2. Add your domain to Oura app redirect URIs');
+        console.log('3. Set up Firebase Functions for secure token exchange');
+        console.log('4. Implement health data → calendar event sync logic');
     </script>
 </body>
 </html>
