@@ -6,6 +6,12 @@
     <title>My Web App</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script defer src="/__/firebase/11.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/11.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -68,6 +74,52 @@
             opacity: 0.8;
         }
 
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .auth-button {
+            padding: 8px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .auth-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .auth-button.primary {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
         main {
             margin-top: 80px;
             padding: 4rem 0;
@@ -111,6 +163,104 @@
         .cta-button:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
+        }
+
+        /* Simplified Authentication Modal Styles */
+        .auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .auth-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .auth-modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: translateY(50px);
+            transition: transform 0.3s ease;
+        }
+
+        .auth-modal.active .auth-modal-content {
+            transform: translateY(0);
+        }
+
+        .auth-modal h2 {
+            color: #333;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .auth-error {
+            color: #e74c3c;
+            margin-top: 1rem;
+            font-size: 14px;
+        }
+
+        .google-signin {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .google-signin:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .google-signin:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-description {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
         .features {
@@ -206,6 +356,11 @@
             .features {
                 grid-template-columns: 1fr;
             }
+
+            .auth-modal-content {
+                padding: 2rem;
+                margin: 1rem;
+            }
         }
 
         .floating-shapes {
@@ -250,6 +405,10 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
         }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -271,9 +430,40 @@
                         <li><a href="#contact">Contact</a></li>
                     </ul>
                 </nav>
+                
+                <!-- Authentication Section -->
+                <div id="auth-section">
+                    <!-- Not logged in -->
+                    <div id="auth-buttons" class="auth-buttons">
+                        <button class="auth-button primary" onclick="openAuthModal()">Sign In with Google</button>
+                    </div>
+                    
+                    <!-- Logged in -->
+                    <div id="user-info" class="user-info hidden">
+                        <div id="user-avatar" class="user-avatar"></div>
+                        <span id="user-name"></span>
+                        <button class="auth-button" onclick="signOut()">Sign Out</button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- Simplified Authentication Modal -->
+    <div id="auth-modal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+            <h2>Welcome!</h2>
+            <p class="auth-description">Sign in with your Google account to get started and access all features.</p>
+            
+            <button id="google-signin-btn" class="google-signin" onclick="signInWithGoogle()">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </button>
+            
+            <div id="auth-error" class="auth-error"></div>
+        </div>
+    </div>
 
     <main>
         <div class="container">
@@ -329,6 +519,130 @@
     </footer>
 
     <script>
+        // Global variables
+        let currentUser = null;
+
+        // Initialize Firebase Auth when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            firebase.auth().onAuthStateChanged(function(user) {
+                currentUser = user;
+                updateAuthUI(user);
+                
+                if (user) {
+                    console.log('✅ User signed in:', user.email);
+                    console.log('👤 User info:', {
+                        name: user.displayName,
+                        email: user.email,
+                        photo: user.photoURL
+                    });
+                } else {
+                    console.log('❌ User signed out');
+                }
+            });
+        });
+
+        // Update UI based on authentication state
+        function updateAuthUI(user) {
+            const authButtons = document.getElementById('auth-buttons');
+            const userInfo = document.getElementById('user-info');
+            const userName = document.getElementById('user-name');
+            const userAvatar = document.getElementById('user-avatar');
+
+            if (user) {
+                // User is signed in
+                authButtons.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                
+                userName.textContent = user.displayName || user.email;
+                userAvatar.textContent = (user.displayName || user.email).charAt(0).toUpperCase();
+                
+                if (user.photoURL) {
+                    userAvatar.innerHTML = `<img src="${user.photoURL}" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                }
+            } else {
+                // User is signed out
+                authButtons.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+            }
+        }
+
+        // Open authentication modal
+        function openAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            modal.classList.add('active');
+            clearAuthError();
+        }
+
+        // Close authentication modal
+        function closeAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            modal.classList.remove('active');
+            clearAuthError();
+        }
+
+        // Sign in with Google
+        async function signInWithGoogle() {
+            const button = document.getElementById('google-signin-btn');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+            
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await firebase.auth().signInWithPopup(provider);
+                console.log('✅ Google sign-in successful:', result.user.email);
+                closeAuthModal();
+            } catch (error) {
+                console.error('❌ Google sign-in error:', error);
+                showAuthError(getErrorMessage(error.code));
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fab fa-google"></i> Continue with Google';
+            }
+        }
+
+        // Sign out
+        async function signOut() {
+            try {
+                await firebase.auth().signOut();
+                console.log('✅ User signed out successfully');
+            } catch (error) {
+                console.error('❌ Sign-out error:', error);
+            }
+        }
+
+        // Show authentication error
+        function showAuthError(message) {
+            const errorDiv = document.getElementById('auth-error');
+            errorDiv.textContent = message;
+        }
+
+        // Clear authentication error
+        function clearAuthError() {
+            const errorDiv = document.getElementById('auth-error');
+            errorDiv.textContent = '';
+        }
+
+        // Get user-friendly error message
+        function getErrorMessage(errorCode) {
+            switch (errorCode) {
+                case 'auth/popup-closed-by-user':
+                    return 'Sign-in was cancelled.';
+                case 'auth/popup-blocked':
+                    return 'Pop-up was blocked. Please allow pop-ups and try again.';
+                case 'auth/network-request-failed':
+                    return 'Network error. Please check your connection and try again.';
+                default:
+                    return 'An error occurred during sign-in. Please try again.';
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('auth-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAuthModal();
+            }
+        });
+
         // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -393,6 +707,7 @@
         console.log('🚀 Welcome to your Firebase-powered web app!');
         console.log('📱 This app is fully responsive and ready for deployment');
         console.log('🔥 Powered by Firebase Hosting');
+        console.log('🔐 Google Authentication is ready!');
     </script>
 </body>
 </html>
