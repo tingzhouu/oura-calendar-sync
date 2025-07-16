@@ -6,11 +6,16 @@ import { kv } from '@vercel/kv';
 // Maximum number of retries for failed events
 const MAX_RETRIES = 3;
 
+// TTL for webhook events (5 days in seconds)
+const WEBHOOK_EVENT_TTL = 5 * 24 * 60 * 60;
+
 export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  let event
 
   try {
     const { eventKey } = req.body;
@@ -19,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     // Get event from KV
-    const event = await kv.get(eventKey);
+    event = await kv.get(eventKey);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -51,19 +56,19 @@ export default async function handler(req, res) {
     // Create calendar event
     await createGoogleCalendarEvent(ouraData, event.data_type, googleUserId);
 
-    // Mark event as processed
+    // Mark event as processed (maintain 5-day TTL)
     await kv.set(eventKey, {
       ...event,
       processed: true,
       processed_at: new Date().toISOString()
-    });
+    }, { ex: WEBHOOK_EVENT_TTL });
 
     return res.status(200).json({ success: true });
 
   } catch (error) {
     console.error('❌ Error processing webhook event:', error);
 
-    // Update retry count and potentially requeue
+    // Update retry count and potentially requeue (maintain 5-day TTL)
     if (event && (!event.retries || event.retries < MAX_RETRIES)) {
       const retries = (event.retries || 0) + 1;
       await kv.set(eventKey, {
@@ -71,7 +76,7 @@ export default async function handler(req, res) {
         retries,
         last_error: error.message,
         last_retry: new Date().toISOString()
-      });
+      }, { ex: WEBHOOK_EVENT_TTL });
 
       return res.status(500).json({
         error: 'Processing failed, will retry',

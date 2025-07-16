@@ -3,6 +3,9 @@
 
 import { kv } from '@vercel/kv';
 
+// TTL for webhook events (5 days in seconds)
+const WEBHOOK_EVENT_TTL = 5 * 24 * 60 * 60;
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,9 +51,9 @@ export default async function handler(req, res) {
         processed: false
       };
 
-      // Store in KV with a unique key
+      // Store in KV with a unique key and 5-day TTL
       const eventKey = `webhook_event:${event.user_id}:${Date.now()}`;
-      await kv.set(eventKey, eventRecord);
+      await kv.set(eventKey, eventRecord, { ex: WEBHOOK_EVENT_TTL });
 
       // Trigger processing asynchronously
       try {
