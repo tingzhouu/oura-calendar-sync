@@ -119,7 +119,7 @@ async function fetchOuraData(event, googleUserId) {
   if (response.status === 401) {
     console.log('🔄 Oura access token expired, attempting refresh...');
     
-    const refreshResponse = await fetch(`${process.env.VERCEL_URL || 'https://oura-calendar-sync.vercel.app'}/api/refresh-oura-token`, {
+    const refreshResponse = await fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/refresh-oura-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -177,7 +177,7 @@ async function createGoogleCalendarEvent(ouraData, dataType, userId) {
   if (response.status === 401) {
     console.log('🔄 Access token expired, attempting refresh...');
     
-    const refreshResponse = await fetch(`${process.env.VERCEL_URL || 'https://oura-calendar-sync.vercel.app'}/api/refresh-google-token`, {
+    const refreshResponse = await fetch(`${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/refresh-google-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
