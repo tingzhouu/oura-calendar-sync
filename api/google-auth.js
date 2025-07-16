@@ -44,7 +44,9 @@ export default async function handler(req, res) {
       code: code,
       redirect_uri: redirectUri,
       client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET
+      client_secret: GOOGLE_CLIENT_SECRET,
+      access_type: 'offline',
+      approval_prompt: 'force'
     });
 
     console.log('🔄 Exchanging Google code for tokens...');

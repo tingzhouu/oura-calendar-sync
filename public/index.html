@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oura Calendar Sync - Firebase-Free</title>
@@ -187,6 +187,46 @@
             pointer-events: none;
         }
 
+        .calendar-prefs {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: left;
+        }
+
+        .calendar-prefs h4 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .pref-group {
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pref-group select {
+            flex: 1;
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .pref-group select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .pref-group select option {
+            background: #2d3748;
+            color: white;
+        }
+
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2rem;
@@ -195,10 +235,10 @@
             .connection-grid {
                 grid-template-columns: 1fr;
             }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
         <div class="hero">
             <h1>🏃‍♂️ Oura Calendar Sync</h1>
@@ -267,6 +307,21 @@
                         Connect Oura Ring
                     </button>
                 </div>
+                <div id="calendar-prefs" class="calendar-prefs hidden">
+                    <h4>Calendar Preferences</h4>
+                    <div class="pref-group">
+                        <label for="sleep-calendar">Sleep Events:</label>
+                        <select id="sleep-calendar" onchange="updateCalendarPrefs()"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="workout-calendar">Workout Events:</label>
+                        <select id="workout-calendar" onchange="updateCalendarPrefs()"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="session-calendar">Session Events:</label>
+                        <select id="session-calendar" onchange="updateCalendarPrefs()"></select>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -286,7 +341,7 @@
         let ouraConnected = false;
 
         // Initialize the app
-        document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', function() {
             // Check if user is returning from OAuth callback
             handleOAuthCallbacks();
             
@@ -396,6 +451,7 @@
                 `scope=${encodeURIComponent(GOOGLE_SCOPES)}&` +
                 `response_type=code&` +
                 `access_type=offline&` +
+                `prompt=consent&` +
                 `state=${state}`;
 
             console.log('🔗 Redirecting to Google OAuth...');
@@ -449,9 +505,14 @@
                 const response = await fetch(`${API_BASE_URL}/get-oura-status?userId=${currentUser.id}`);
                 const result = await response.json();
                 
-                                    if (response.ok) {
+                if (response.ok) {
                     ouraConnected = result.connected;
                     updateOuraUI();
+                    
+                    // Load calendar preferences if connected
+                    if (ouraConnected) {
+                        loadCalendarPreferences();
+                    }
                 }
             } catch (error) {
                 console.error('❌ Error checking Oura status:', error);
@@ -496,15 +557,91 @@
         function updateOuraUI() {
             const ouraStatus = document.getElementById('oura-status');
             const connectBtn = document.getElementById('connect-oura-btn');
+            const calendarPrefs = document.getElementById('calendar-prefs');
 
             if (ouraConnected) {
                 ouraStatus.innerHTML = '<span class="status-connected">✅ Connected</span>';
                 connectBtn.textContent = 'Sync Oura Data';
                 connectBtn.onclick = syncOuraData;
+                calendarPrefs.classList.remove('hidden');
             } else {
                 ouraStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
                 connectBtn.textContent = 'Connect Oura Ring';
                 connectBtn.onclick = connectOura;
+                calendarPrefs.classList.add('hidden');
+            }
+        }
+
+        async function loadCalendarPreferences() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/update-calendar-prefs?userId=${currentUser.id}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load calendar preferences');
+                }
+
+                // Populate calendar dropdowns
+                const calendars = data.calendars;
+                const prefs = data.preferences;
+                const types = ['sleep', 'workout', 'session'];
+
+                types.forEach(type => {
+                    const select = document.getElementById(`${type}-calendar`);
+                    select.innerHTML = ''; // Clear existing options
+
+                    // Add options for each calendar
+                    calendars.forEach(cal => {
+                        const option = document.createElement('option');
+                        option.value = cal.id;
+                        option.textContent = cal.summary;
+                        if (cal.primary) {
+                            option.textContent += ' (Primary)';
+                        }
+                        select.appendChild(option);
+                    });
+
+                    // Set selected value
+                    select.value = prefs[type] || 'primary';
+                });
+
+            } catch (error) {
+                console.error('❌ Error loading calendar preferences:', error);
+                alert('Failed to load calendar preferences. Please try again.');
+            }
+        }
+
+        async function updateCalendarPrefs() {
+            if (!currentUser) return;
+
+            try {
+                const preferences = {
+                    sleep: document.getElementById('sleep-calendar').value,
+                    workout: document.getElementById('workout-calendar').value,
+                    session: document.getElementById('session-calendar').value
+                };
+
+                const response = await fetch(`${API_BASE_URL}/update-calendar-prefs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        preferences
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to update preferences');
+                }
+
+                console.log('✅ Calendar preferences updated successfully');
+
+            } catch (error) {
+                console.error('❌ Error updating calendar preferences:', error);
+                alert('Failed to update calendar preferences. Please try again.');
             }
         }
 
@@ -540,5 +677,5 @@
             console.log('3. Add redirect URI to Google Cloud Console: ' + window.location.origin);
         }
     </script>
-</body>
-</html> 
+  </body>
+</html>

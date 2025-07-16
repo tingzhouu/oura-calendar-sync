@@ -77,24 +77,44 @@ export default async function handler(req, res) {
       return res.redirect(`${process.env.FRONTEND_URL || 'https://oura-calendar-sync.vercel.app'}?oura_error=invalid_tokens`);
     }
 
+    // Get Oura user ID from personal info API
+    const personalInfoResponse = await fetch('https://api.ouraring.com/v2/usercollection/personal_info', {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`
+      }
+    });
+
+    if (!personalInfoResponse.ok) {
+      console.error(`❌ Failed to fetch Oura user info: ${personalInfoResponse.status}`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://oura-calendar-sync.vercel.app'}?oura_error=user_info_failed`);
+    }
+
+    const personalInfo = await personalInfoResponse.json();
+    const ouraUserId = personalInfo.id;
+
+    if (!ouraUserId) {
+      console.error('❌ No Oura user ID in personal info response');
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://oura-calendar-sync.vercel.app'}?oura_error=missing_user_id`);
+    }
+
     // Store tokens securely in Vercel KV
     const tokenRecord = {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || '',
-      token_type: tokens.token_type || 'Bearer',
-      expires_in: tokens.expires_in || 3600,
-      scope: tokens.scope || '',
+      ...tokens,
       created_at: new Date().toISOString(),
-      last_used: new Date().toISOString()
+      last_used: new Date().toISOString(),
+      oura_user_id: ouraUserId // Store Oura user ID with tokens
     };
 
-    // Store in KV with user-specific key
+    // Store in KV with Google user ID as key
     await kv.set(`oura_tokens:${userId}`, tokenRecord);
+    
+    // Create mapping from Oura user ID to Google user ID
+    await kv.set(`oura_user_mapping:${ouraUserId}`, userId);
     
     // Mark user as connected
     await kv.set(`oura_connected:${userId}`, true);
     
-    console.log(`✅ Oura tokens stored in KV for user: ${userId}`);
+    console.log(`✅ Oura tokens stored for Google user: ${userId}, Oura user: ${ouraUserId}`);
 
     // Redirect back to frontend with success
     return res.redirect(`${process.env.FRONTEND_URL || 'https://oura-calendar-sync.vercel.app'}?oura_success=true`);

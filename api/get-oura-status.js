@@ -38,11 +38,10 @@ export default async function handler(req, res) {
     }
 
     // Check KV for user's Oura connection status
-    const isConnected = await kv.get(`oura_connected:${userId}`);
     const tokens = await kv.get(`oura_tokens:${userId}`);
 
     return res.status(200).json({
-      connected: Boolean(isConnected && tokens),
+      connected: Boolean(tokens),
       last_sync: tokens?.last_used || null
     });
 
