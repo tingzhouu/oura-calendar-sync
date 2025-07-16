@@ -296,33 +296,50 @@
 
         function handleOAuthCallbacks() {
             const urlParams = new URLSearchParams(window.location.search);
+            
+            // Handle Oura OAuth backend callback results
+            const ouraSuccess = urlParams.get('oura_success');
+            const ouraError = urlParams.get('oura_error');
+            
+            if (ouraSuccess === 'true') {
+                console.log('✅ Oura account connected successfully!');
+                ouraConnected = true;
+                updateOuraUI();
+                cleanUpUrl();
+                return;
+            }
+            
+            if (ouraError) {
+                console.error('❌ Oura OAuth error:', ouraError);
+                let errorMessage = 'Failed to connect Oura account. ';
+                switch(ouraError) {
+                    case 'missing_parameters': errorMessage += 'Missing authorization code.'; break;
+                    case 'invalid_state': errorMessage += 'Security error.'; break;
+                    case 'server_config': errorMessage += 'Server configuration error.'; break;
+                    case 'token_exchange_failed': errorMessage += 'Token exchange failed.'; break;
+                    case 'invalid_tokens': errorMessage += 'Invalid tokens received.'; break;
+                    default: errorMessage += 'Please try again.';
+                }
+                alert(errorMessage);
+                cleanUpUrl();
+                return;
+            }
+            
+            // Handle Google OAuth (frontend flow)
             const code = urlParams.get('code');
             const state = urlParams.get('state');
             const error = urlParams.get('error');
 
             if (error) {
                 console.error('❌ OAuth error:', error);
-                alert('Authentication failed. Please try again.');
+                alert('Google authentication failed. Please try again.');
                 cleanUpUrl();
                 return;
             }
 
             if (code && state) {
-                const storedState = localStorage.getItem('oauth_state');
-                const oauthType = localStorage.getItem('oauth_type');
-
-                if (state !== storedState) {
-                    console.error('❌ State mismatch in OAuth');
-                    alert('Security error. Please try again.');
-                    cleanUpUrl();
-                    return;
-                }
-
-                if (oauthType === 'google') {
-                    handleGoogleCallback(code);
-                } else if (oauthType === 'oura') {
-                    handleOuraCallback(code);
-                }
+                // This is Google OAuth callback
+                handleGoogleCallback(code);
             }
         }
 
@@ -364,46 +381,7 @@
             }
         }
 
-        async function handleOuraCallback(code) {
-            if (!currentUser) {
-                alert('Please sign in with Google first');
-                cleanUpOAuthState();
-                return;
-            }
 
-            try {
-                console.log('🔄 Processing Oura OAuth callback...');
-                
-                const response = await fetch(`${API_BASE_URL}/exchange-oura-token`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        userId: currentUser.id,
-                        redirectUri: window.location.origin
-                    })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Oura token exchange failed');
-                }
-
-                ouraConnected = true;
-                updateOuraUI();
-                
-                console.log('✅ Oura account connected successfully!');
-                
-            } catch (error) {
-                console.error('❌ Error in Oura token exchange:', error);
-                alert('Failed to complete Oura connection. Please try again.');
-            } finally {
-                cleanUpOAuthState();
-            }
-        }
 
         function signInWithGoogle() {
             // Generate random state for security
@@ -430,20 +408,19 @@
                 return;
             }
 
-            // Generate random state for security
-            const state = generateRandomString(32);
-            localStorage.setItem('oauth_state', state);
-            localStorage.setItem('oauth_type', 'oura');
+            // Generate random state with user ID for security and user identification
+            const randomPart = generateRandomString(32);
+            const state = `${currentUser.id}:${randomPart}`;
 
-            // Build Oura OAuth URL
+            // Build Oura OAuth URL - redirect directly to backend
             const ouraAuthUrl = `https://cloud.ouraring.com/oauth/authorize?` +
                 `response_type=code&` +
                 `client_id=${OURA_CLIENT_ID}&` +
-                `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
+                `redirect_uri=${encodeURIComponent(API_BASE_URL + '/oura-callback')}&` +
                 `scope=${encodeURIComponent(OURA_SCOPES)}&` +
                 `state=${state}`;
 
-            console.log('🔗 Redirecting to Oura OAuth...');
+            console.log('🔗 Redirecting to Oura OAuth (backend flow)...');
             window.location.href = ouraAuthUrl;
         }
 
