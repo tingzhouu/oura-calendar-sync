@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     }
 
     // Fetch full data from Oura API based on event type
-    const ouraData = await fetchOuraData(event, googleUserId);
+    const ouraData = await fetchOuraData(req, event, googleUserId);
     if (!ouraData) {
       throw new Error('Failed to fetch Oura data');
     }
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function fetchOuraData(event, googleUserId) {
+async function fetchOuraData(req, event, googleUserId) {
   const baseUrl = 'https://api.ouraring.com/v2';
   let endpoint;
 
