@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     }
 
     // Create calendar event
-    await createGoogleCalendarEvent(ouraData, event.data_type, googleUserId);
+    await createGoogleCalendarEvent(req, ouraData, event.data_type, googleUserId);
 
     // Mark event as processed (maintain 5-day TTL)
     await kv.set(eventKey, {
@@ -154,7 +154,7 @@ async function fetchOuraData(event, googleUserId) {
   return response.json();
 }
 
-async function createGoogleCalendarEvent(ouraData, dataType, userId) {
+async function createGoogleCalendarEvent(req, ouraData, dataType, userId) {
   // Format event data based on type
   const event = formatCalendarEvent(ouraData, dataType);
 
