@@ -287,16 +287,29 @@
                 <div id="calendar-prefs" class="calendar-prefs hidden">
                     <h4>Calendar Preferences</h4>
                     <div class="pref-group">
-                        <label for="sleep-calendar">Sleep Events:</label>
+                        <label for="sleep-calendar">(Oura) Sleep Events:</label>
                         <select id="sleep-calendar"></select>
                     </div>
                     <div class="pref-group">
-                        <label for="workout-calendar">Workout Events:</label>
+                        <label for="workout-calendar">(Oura) Workout Events:</label>
                         <select id="workout-calendar"></select>
                     </div>
                     <div class="pref-group">
-                        <label for="session-calendar">Session Events:</label>
+                        <label for="session-calendar">(Oura) Session Events:</label>
                         <select id="session-calendar"></select>
+                    </div>
+
+                    <div class="pref-group">
+                        <label for="strava-run-calendar">(Strava) Run Events:</label>
+                        <select id="strava-run-calendar"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="strava-workout-calendar">(Strava) Workout Events:</label>
+                        <select id="strava-workout-calendar"></select>
+                    </div>
+                    <div class="pref-group">
+                        <label for="strava-weighttraining-calendar">(Strava) Weight Training Events:</label>
+                        <select id="strava-weighttraining-calendar"></select>
                     </div>
                     <button class="btn btn-secondary" onclick="updateCalendarPrefs()" style="margin-top: 1rem;">
                         Save Preferences
@@ -323,6 +336,24 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Strava Ring Card -->
+            <div class="connection-card">
+                <h3>Strava</h3>
+                <div class="connection-status" id="strava-status">
+                    <span class="status-disconnected">Not Connected</span>
+                </div>
+                <div class="feature-list">
+                    <ul>
+                        <li>📊 Workouts</li>
+                    </ul>
+                </div>
+                <div id="strava-actions">
+                    <button class="btn btn-strava" onclick="connectStrava()" id="connect-strava-btn">
+                        Connect Strava
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -330,11 +361,13 @@
         // Configuration
         const GOOGLE_CLIENT_ID = '1001278392320-sd2f6h7dl5pm98vvesdi40o1rcvm0spe.apps.googleusercontent.com'; // Working Client ID from OAuth Playground
         const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM';
+        const STRAVA_CLIENT_ID = 177491;
         const API_BASE_URL = 'https://oura-calendar-sync.vercel.app/api';
         
         // Google OAuth scopes for Calendar access
         const GOOGLE_SCOPES = 'openid email profile https://www.googleapis.com/auth/calendar';
         const OURA_SCOPES = 'email personal daily heartrate workout session spo2';
+        const STRAVA_SCOPES = 'activity:read_all';
         
         // Global state
         let currentUser = null;
@@ -349,12 +382,33 @@
             loadUserSession();
         });
 
+        function oauthProviderWithError(input) {
+            if (ouraError) {
+                return 'Oura'
+            }
+            if (stravaError) {
+                return 'Strava'
+            }
+        }
+
         function handleOAuthCallbacks() {
             const urlParams = new URLSearchParams(window.location.search);
             
             // Handle Oura OAuth backend callback results
             const ouraSuccess = urlParams.get('oura_success');
             const ouraError = urlParams.get('oura_error');
+
+            // Handle Strava OAuth backend callback results
+            const stravaSuccess = urlParams.get('strava_success');
+            const stravaError = urlParams.get('strava_error');
+
+            if (stravaSuccess === 'true') {
+                console.log('✅ Strava account connected successfully!');
+                stravaConnected = true;
+                updateStravaUI();
+                cleanUpUrl();
+                return;
+            }
             
             if (ouraSuccess === 'true') {
                 console.log('✅ Oura account connected successfully!');
@@ -364,9 +418,10 @@
                 return;
             }
             
-            if (ouraError) {
-                console.error('❌ Oura OAuth error:', ouraError);
-                let errorMessage = 'Failed to connect Oura account. ';
+            if (ouraError || stravaError) {
+                const provider = oauthProviderWithError()
+                console.error(`❌ ${provider} OAuth error: ${ouraError}`);
+                let errorMessage = `Failed to connect ${provider} account. `;
                 switch(ouraError) {
                     case 'missing_parameters': errorMessage += 'Missing authorization code.'; break;
                     case 'invalid_state': errorMessage += 'Security error.'; break;
@@ -424,7 +479,7 @@
                 localStorage.setItem('user_session', JSON.stringify(currentUser));
                 
                 updateAuthUI(true);
-                await checkOuraConnection();
+                await checkOauthConnection();
                 
                 console.log('✅ Google authentication successful!');
                 
@@ -480,6 +535,28 @@
             window.location.href = ouraAuthUrl;
         }
 
+        function connectStrava() {
+            if (!currentUser) {
+                alert('Please sign in with Google first');
+                return;
+            }
+
+            // Generate random state with user ID for security and user identification
+            const randomPart = generateRandomString(32);
+            const state = `${currentUser.id}:${randomPart}`;
+
+            // Build Oura OAuth URL - redirect directly to backend
+            const ouraAuthUrl = `https://www.strava.com/oauth/authorize?` +
+                `response_type=code&` +
+                `client_id=${STRAVA_CLIENT_ID}&` +
+                `redirect_uri=${encodeURIComponent(API_BASE_URL + '/strava-callback')}&` +
+                `scope=${encodeURIComponent(STRAVA_SCOPES)}&` +
+                `state=${state}`;
+
+            console.log('🔗 Redirecting to Strava OAuth (backend flow)...');
+            window.location.href = ouraAuthUrl;
+        }
+
         function signOut() {
             currentUser = null;
             ouraConnected = false;
@@ -494,31 +571,29 @@
             if (savedSession) {
                 currentUser = JSON.parse(savedSession);
                 updateAuthUI(true);
-                checkOuraConnection();
+                checkOauthConnection();
             }
         }
 
-        async function checkOuraConnection() {
+        async function checkOauthConnection() {
             if (!currentUser) return;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/get-oura-status?userId=${currentUser.id}`);
+                const response = await fetch(`${API_BASE_URL}/get-oauth-status?userId=${currentUser.id}`);
                 const result = await response.json();
                 
                 if (response.ok) {
-                    ouraConnected = result.connected;
+                    stravaConnected = result.strava.connected;
+                    ouraConnected = result.oura.connected;
+                    updateStravaUI();
                     updateOuraUI();
-                    
-                    // Load calendar preferences if connected
-                    if (ouraConnected) {
-                        loadCalendarPreferences();
-                    }
+
+                    loadCalendarPreferences();
                 }
             } catch (error) {
-                console.error('❌ Error checking Oura status:', error);
+                console.error('❌ Error checking Oauth status:', error);
             }
         }
-
 
 
         function updateAuthUI(signedIn) {
@@ -568,6 +643,21 @@
             }
         }
 
+        function updateStravaUI() {
+            const stravaStatus = document.getElementById('strava-status');
+            const connectBtn = document.getElementById('connect-strava-btn');
+
+            if (stravaConnected) {
+                stravaStatus.innerHTML = '<span class="status-connected">✅ Connected</span>';
+                connectBtn.textContent = 'Reconnect Strava';
+                connectBtn.onclick = connectStrava;
+            } else {
+                stravaStatus.innerHTML = '<span class="status-disconnected">❌ Not Connected</span>';
+                connectBtn.textContent = 'Connect Strava';
+                connectBtn.onclick = connectStrava;
+            }
+        }
+
         function updateOuraUI() {
             const ouraStatus = document.getElementById('oura-status');
             const connectBtn = document.getElementById('connect-oura-btn');
@@ -598,7 +688,7 @@
                 // Populate calendar dropdowns
                 const calendars = data.calendars;
                 const prefs = data.preferences;
-                const types = ['sleep', 'workout', 'session'];
+                const types = ['sleep', 'workout', 'session', 'strava-workout', 'strava-run', 'strava-weighttraining'];
 
                 types.forEach(type => {
                     const select = document.getElementById(`${type}-calendar`);
@@ -639,7 +729,10 @@
                 const preferences = {
                     sleep: document.getElementById('sleep-calendar').value,
                     workout: document.getElementById('workout-calendar').value,
-                    session: document.getElementById('session-calendar').value
+                    session: document.getElementById('session-calendar').value,
+                    'strava.run': document.getElementById('strava-run-calendar').value,
+                    'strava.workout': document.getElementById('strava-workout-calendar').value,
+                    'strava.weighttraining': document.getElementById('strava-weighttraining-calendar').value,
                 };
 
                 const response = await fetch(`${API_BASE_URL}/update-calendar-prefs`, {
