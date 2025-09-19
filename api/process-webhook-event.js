@@ -49,9 +49,9 @@ export default async function handler(req, res) {
   }
 
   let event;
+  const { eventKey, source } = req.body;
 
   try {
-    const { eventKey, source } = req.body;
     if (!eventKey) {
       return res.status(400).json({ error: "Missing eventKey parameter" });
     }
@@ -493,8 +493,8 @@ async function processStravaWebhook(input) {
 }
 
 async function refreshStravaTokens(input) {
-  const {} = input;
-  // Check if Oura client secret is configured
+  const { stravaTokens, googleUserId: userId } = input;
+  // Check if Strava client secret is configured
   const STRAVA_CLIENT_ID = 177491;
   const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 
@@ -528,31 +528,27 @@ async function refreshStravaTokens(input) {
   if (!refreshResponse.ok) {
     const errorText = await refreshResponse.text();
     console.error(
-      `❌ Oura token refresh failed: ${refreshResponse.status} - ${errorText}`
+      `❌ Strava token refresh failed: ${refreshResponse.status} - ${errorText}`
     );
 
     // If refresh token is invalid, user needs to re-authenticate
     if (refreshResponse.status === 400) {
-      return res.status(400).json({
-        error: "Refresh token expired or invalid",
-        reauth_required: true,
-      });
+      throw new Error(
+        `Refresh token expired or invalid, re-authenticate with strava`
+      );
     }
 
-    return res.status(400).json({
-      error: "Token refresh failed",
-      details: `Strava API returned ${refreshResponse.status}`,
-    });
+    throw new Error(
+      `Token refresh failed, Strava API returned ${refreshResponse.status}`
+    );
   }
 
   const newTokens = await refreshResponse.json();
 
   // Validate token response
   if (!newTokens.access_token) {
-    console.error(`❌ Invalid refresh response from Oura:`, newTokens);
-    return res.status(400).json({
-      error: "Invalid token response from Oura",
-    });
+    console.error(`❌ Invalid refresh response from Strava:`, newTokens);
+    throw new Error(`Invalid refresh response from Strava`);
   }
 
   // Update stored tokens (keep existing refresh token if not provided)
@@ -561,7 +557,7 @@ async function refreshStravaTokens(input) {
     access_token: newTokens.access_token,
     token_type: newTokens.token_type || "Bearer",
     expires_in: newTokens.expires_in || 3600,
-    scope: newTokens.scope || ouraTokens.scope,
+    scope: newTokens.scope || stravaTokens.scope,
     last_used: new Date().toISOString(),
     refreshed_at: new Date().toISOString(),
   };
@@ -604,7 +600,6 @@ async function fetchStravaData(input) {
     });
 
     if (refreshResponse.success) {
-      const refreshResult = await refreshResponse.json();
       console.log(
         "✅ Strava token refreshed successfully, retrying data fetch"
       );
@@ -612,14 +607,10 @@ async function fetchStravaData(input) {
       // Retry with new token
       response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${refreshResult.access_token}`,
+          Authorization: `Bearer ${refreshResponse.access_token}`,
         },
       });
     } else {
-      const refreshError = await refreshResponse.json();
-      if (refreshError.reauth_required) {
-        throw new Error("User needs to re-authenticate with Strava");
-      }
       throw new Error("Failed to refresh Strava access token");
     }
   }
