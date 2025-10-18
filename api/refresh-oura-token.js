@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     }
 
     // Check if Oura client secret is configured
-    const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM';
+    const OURA_CLIENT_ID = process.env.OURA_CLIENT_ID;
     const OURA_CLIENT_SECRET = process.env.OURA_CLIENT_SECRET;
     
     if (!OURA_CLIENT_SECRET) {
@@ -44,6 +44,13 @@ export default async function handler(req, res) {
         error: 'Server configuration error: OURA_CLIENT_SECRET not set'
       });
     }
+
+    if (!OURA_CLIENT_ID) {
+      return res.status(500).json({
+        error: 'Server configuration error: OURA_CLIENT_ID not set'
+      });
+    }
+
 
     // Refresh the access token
     const refreshData = new URLSearchParams({

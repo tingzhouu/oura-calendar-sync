@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       code: code,
       redirect_uri: `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/oura-callback`,
-      client_id: 'LKNC3TPVJH4ONYAM', // Oura client ID
+      client_id: process.env.OURA_CLIENT_ID, // Oura client ID
       client_secret: OURA_CLIENT_SECRET
     });
 
