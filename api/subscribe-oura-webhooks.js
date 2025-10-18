@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   try {
     // Check if Oura client credentials are configured
-    const OURA_CLIENT_ID = 'LKNC3TPVJH4ONYAM';
+    const OURA_CLIENT_ID = process.env.OURA_CLIENT_ID;
     const OURA_CLIENT_SECRET = process.env.OURA_CLIENT_SECRET;
     const WEBHOOK_VERIFICATION_TOKEN = process.env.OURA_WEBHOOK_VERIFICATION_TOKEN;
 
