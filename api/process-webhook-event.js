@@ -109,6 +109,9 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
+    // Refresh Oura webhook
+    await refreshOuraWebhook();
+
     // Fetch full data from Oura API based on event type
     const ouraData = await fetchOuraData(req, event, googleUserId);
     if (!ouraData) {
@@ -233,6 +236,61 @@ async function fetchOuraData(req, event, googleUserId) {
   }
 
   return response.json();
+}
+
+async function refreshOuraWebhook() {
+  const baseUrl = "https://api.ouraring.com/v2/webhook/subscription";
+  const getWebhooksResponse = await fetch(baseUrl, {
+    headers: {
+      "x-client-id": process.env.OURA_CLIENT_ID,
+      "x-client-secret": process.env.OURA_CLIENT_SECRET,
+    },
+  });
+
+  if (getWebhooksResponse.status !== 200) {
+    const text = await getWebhooksResponse.text();
+    const errorMessage = `Unable to fetch webhooks from Oura ${getWebhooksResponse.status} ${text}`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+
+  const webhooks = await getWebhooksResponse.json();
+  if (!Array.isArray(webhooks)) {
+    const errorMessage = `Received ${JSON.stringify(
+      webhooks
+    )} that is not an Array`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+
+  for (const webhook of webhooks) {
+    if (!webhook.id) {
+      const errorMessage = `Received ${JSON.stringify(
+        webhook
+      )} that does not have an id`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  for (const webhook of webhooks) {
+    const res = await fetch(`${baseUrl}/renew/${webhook.id}`, {
+      method: "PUT",
+      headers: {
+        "x-client-id": process.env.OURA_CLIENT_ID,
+        "x-client-secret": process.env.OURA_CLIENT_SECRET,
+      },
+    });
+    if (res.status !== 200) {
+      const text = await res.text();
+      const errorMessage = `Failed to refresh oura webhook for ${webhook.data_type} id ${webhook.id}  ${res.status} ${text}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+    console.log(
+      `Refreshed oura webhook for ${webhook.data_type} id ${webhook.id}`
+    );
+  }
 }
 
 async function createGoogleCalendarEvent(req, ouraData, dataType, userId) {
