@@ -8,6 +8,49 @@ const MAX_RETRIES = 3;
 
 // TTL for webhook events (5 days in seconds)
 const WEBHOOK_EVENT_TTL = 5 * 24 * 60 * 60;
+const DEBUG_EVENT_TTL = 14 * 24 * 60 * 60;
+const MAX_DEBUG_ENTRIES = 200;
+
+async function appendDebugEvent(input) {
+  const {
+    source = "oura",
+    objectId,
+    eventKey = null,
+    stage,
+    data = {},
+  } = input;
+  if (!objectId || !stage) {
+    return;
+  }
+
+  const debugKey = `debug:${source}:${objectId}`;
+  const timestamp = new Date().toISOString();
+  const entry = {
+    timestamp,
+    stage,
+    eventKey,
+    ...data,
+  };
+
+  try {
+    const existing = await kv.get(debugKey);
+    const entries = Array.isArray(existing?.entries) ? existing.entries : [];
+    entries.push(entry);
+
+    await kv.set(
+      debugKey,
+      {
+        source,
+        object_id: objectId,
+        updated_at: timestamp,
+        entries: entries.slice(-MAX_DEBUG_ENTRIES),
+      },
+      { ex: DEBUG_EVENT_TTL }
+    );
+  } catch (debugError) {
+    console.error("❌ Failed to persist debug event:", debugError);
+  }
+}
 
 async function getGoogleUserId(input) {
   const { source, event } = input;
@@ -50,6 +93,7 @@ export default async function handler(req, res) {
 
   let event;
   const { eventKey, source } = req.body;
+  const eventSource = source === "strava" ? "strava" : "oura";
 
   try {
     if (!eventKey) {
@@ -62,6 +106,17 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Event not found" });
     }
 
+    await appendDebugEvent({
+      source: eventSource,
+      objectId: event.object_id,
+      eventKey,
+      stage: "processing_started",
+      data: {
+        data_type: event.data_type || null,
+        event_type: event.event_type || null,
+      },
+    });
+
     console.log(`🔄 Processing webhook event: ${eventKey}`, event);
 
     // Get Google user ID from Oura user ID mapping
@@ -71,6 +126,15 @@ export default async function handler(req, res) {
         "❌ No Google user mapping found for Oura user:",
         event.user_id
       );
+      await appendDebugEvent({
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        stage: "user_mapping_missing",
+        data: {
+          user_id: event.user_id || null,
+        },
+      });
       return res.status(400).json({ error: "User mapping not found" });
     }
 
@@ -83,6 +147,16 @@ export default async function handler(req, res) {
         ["oura/strava"]: !!tokens,
         source,
         google: !!googleTokens,
+      });
+      await appendDebugEvent({
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        stage: "tokens_missing",
+        data: {
+          provider_tokens_present: !!tokens,
+          google_tokens_present: !!googleTokens,
+        },
       });
       return res.status(400).json({ error: "User tokens not found" });
     }
@@ -106,6 +180,16 @@ export default async function handler(req, res) {
         { ex: WEBHOOK_EVENT_TTL }
       );
 
+      await appendDebugEvent({
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        stage: "processing_completed",
+        data: {
+          processed: true,
+        },
+      });
+
       return res.status(200).json({ success: true });
     }
 
@@ -118,12 +202,28 @@ export default async function handler(req, res) {
       throw new Error("Failed to fetch Oura data");
     }
 
+    await appendDebugEvent({
+      source: eventSource,
+      objectId: event.object_id,
+      eventKey,
+      stage: "oura_data_fetched",
+      data: {
+        data_type: event.data_type || null,
+      },
+    });
+
     // Create calendar event
     await createGoogleCalendarEvent(
       req,
       ouraData,
       event.data_type,
-      googleUserId
+      googleUserId,
+      {
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        dataType: event.data_type,
+      }
     );
 
     // Mark event as processed (maintain 5-day TTL)
@@ -136,6 +236,16 @@ export default async function handler(req, res) {
       },
       { ex: WEBHOOK_EVENT_TTL }
     );
+
+    await appendDebugEvent({
+      source: eventSource,
+      objectId: event.object_id,
+      eventKey,
+      stage: "processing_completed",
+      data: {
+        processed: true,
+      },
+    });
 
     return res.status(200).json({ success: true });
   } catch (error) {
@@ -155,10 +265,33 @@ export default async function handler(req, res) {
         { ex: WEBHOOK_EVENT_TTL }
       );
 
+      await appendDebugEvent({
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        stage: "processing_retry_scheduled",
+        data: {
+          retries,
+          error: error.message,
+        },
+      });
+
       return res.status(500).json({
         error: `Processing failed, check error: ${error.message}`,
         retries,
         eventKey,
+      });
+    }
+
+    if (event) {
+      await appendDebugEvent({
+        source: eventSource,
+        objectId: event.object_id,
+        eventKey,
+        stage: "processing_failed_permanently",
+        data: {
+          error: error.message,
+        },
       });
     }
 
@@ -293,13 +426,32 @@ async function refreshOuraWebhook() {
   }
 }
 
-async function createGoogleCalendarEvent(req, ouraData, dataType, userId) {
+async function createGoogleCalendarEvent(
+  req,
+  ouraData,
+  dataType,
+  userId,
+  debugContext = {}
+) {
+  const { source = "oura", objectId = null, eventKey = null } = debugContext;
   // Format event data based on type
   const event = formatCalendarEvent(ouraData, dataType);
 
   // Get user's calendar preference or use primary
   const calendarPrefs = await kv.get(`calendar_prefs:${userId}`);
   const calendarId = calendarPrefs?.[dataType] || "primary";
+
+  await appendDebugEvent({
+    source,
+    objectId,
+    eventKey,
+    stage: "calendar_insert_attempt",
+    data: {
+      calendar_id: calendarId,
+      data_type: dataType,
+      summary: event.summary || null,
+    },
+  });
 
   // Try to create the event with current access token
   let googleTokens = await kv.get(`google_tokens:${userId}`);
@@ -365,12 +517,35 @@ async function createGoogleCalendarEvent(req, ouraData, dataType, userId) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    await appendDebugEvent({
+      source,
+      objectId,
+      eventKey,
+      stage: "calendar_insert_failed",
+      data: {
+        status: response.status,
+        error: errorText,
+      },
+    });
     throw new Error(
       `Failed to create calendar event: ${response.status} - ${errorText}`
     );
   }
 
-  return response.json();
+  const createdEvent = await response.json();
+  await appendDebugEvent({
+    source,
+    objectId,
+    eventKey,
+    stage: "calendar_inserted",
+    data: {
+      google_event_id: createdEvent.id || null,
+      html_link: createdEvent.htmlLink || null,
+      calendar_id: calendarId,
+    },
+  });
+
+  return createdEvent;
 }
 
 function formatCalendarEvent(ouraData, dataType) {

@@ -5,6 +5,39 @@ import { kv } from '@vercel/kv';
 
 // TTL for webhook events (5 days in seconds)
 const WEBHOOK_EVENT_TTL = 5 * 24 * 60 * 60;
+const DEBUG_EVENT_TTL = 14 * 24 * 60 * 60;
+const MAX_DEBUG_ENTRIES = 200;
+
+async function appendDebugEvent(input) {
+  const { objectId, eventKey = null, stage, data = {} } = input;
+  if (!objectId || !stage) {
+    return;
+  }
+
+  const debugKey = `debug:oura:${objectId}`;
+  const timestamp = new Date().toISOString();
+  const entry = {
+    timestamp,
+    stage,
+    eventKey,
+    ...data
+  };
+
+  try {
+    const existing = await kv.get(debugKey);
+    const entries = Array.isArray(existing?.entries) ? existing.entries : [];
+    entries.push(entry);
+
+    await kv.set(debugKey, {
+      source: 'oura',
+      object_id: objectId,
+      updated_at: timestamp,
+      entries: entries.slice(-MAX_DEBUG_ENTRIES)
+    }, { ex: DEBUG_EVENT_TTL });
+  } catch (debugError) {
+    console.error('❌ Failed to persist webhook debug event:', debugError);
+  }
+}
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -44,6 +77,22 @@ export default async function handler(req, res) {
 
       console.log(`📥 Received ${event.event_type} event for ${event.data_type} ${event.object_id}`);
 
+      const duplicateCounterKey = `debug:dupe:oura:${event.user_id}:${event.data_type}:${event.event_type}:${event.object_id}`;
+      const duplicateCount = Number(await kv.get(duplicateCounterKey) || 0) + 1;
+      await kv.set(duplicateCounterKey, duplicateCount, { ex: DEBUG_EVENT_TTL });
+
+      await appendDebugEvent({
+        objectId: event.object_id,
+        stage: 'webhook_received',
+        data: {
+          event_type: event.event_type,
+          data_type: event.data_type,
+          user_id: event.user_id,
+          event_time: event.event_time || null,
+          duplicate_count: duplicateCount
+        }
+      });
+
       // Store the event for processing
       const eventRecord = {
         ...event,
@@ -54,6 +103,14 @@ export default async function handler(req, res) {
       // Store in KV with a unique key and 5-day TTL
       const eventKey = `webhook_event:${event.user_id}:${Date.now()}`;
       await kv.set(eventKey, eventRecord, { ex: WEBHOOK_EVENT_TTL });
+      await appendDebugEvent({
+        objectId: event.object_id,
+        eventKey,
+        stage: 'webhook_stored',
+        data: {
+          received_at: eventRecord.received_at
+        }
+      });
 
       // Trigger processing asynchronously
       try {
@@ -72,6 +129,14 @@ export default async function handler(req, res) {
           body: JSON.stringify({ eventKey })
         }).then(response => {
           console.log(`✅ Successfully triggered processing for event: ${eventKey}, status: ${response.status}`);
+          appendDebugEvent({
+            objectId: event.object_id,
+            eventKey,
+            stage: 'processing_triggered',
+            data: {
+              trigger_status: response.status
+            }
+          });
           return response;
         });
 
@@ -79,13 +144,34 @@ export default async function handler(req, res) {
         await Promise.race([processingPromise, timeoutPromise]).catch(error => {
           if (error.message.includes('timeout')) {
             console.log('⏱️ Processing trigger timed out (request likely sent)');
+            appendDebugEvent({
+              objectId: event.object_id,
+              eventKey,
+              stage: 'processing_trigger_timeout'
+            });
           } else {
             console.error('❌ Failed to trigger event processing:', error);
+            appendDebugEvent({
+              objectId: event.object_id,
+              eventKey,
+              stage: 'processing_trigger_failed',
+              data: {
+                error: error.message
+              }
+            });
           }
         });
 
       } catch (error) {
         console.error('❌ Error triggering event processing:', error);
+        await appendDebugEvent({
+          objectId: event.object_id,
+          eventKey,
+          stage: 'processing_trigger_exception',
+          data: {
+            error: error.message
+          }
+        });
       }
 
       // Respond quickly (under 10 seconds)
